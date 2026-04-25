@@ -1,0 +1,31 @@
+place_id,Name,Type,lat,lon,avg_cost,avg_rating
+1,Baga Beach,beach,15.5553,73.7517,3000,4.5
+2,Calangute Beach,beach,15.5439,73.7553,2500,4.4
+3,Anjuna Beach,beach,15.5740,73.7407,2000,4.3
+4,Fort Aguada,heritage,15.4989,73.7737,500,4.6
+5,Dudhsagar Falls,nature,15.3144,74.3143,1500,4.7
+6,Mysore Palace,heritage,12.3051,76.6551,800,4.7
+7,Coorg Hills,hill,12.3375,75.8069,4000,4.6
+8,Ooty Lake,nature,11.4064,76.6932,1200,4.4
+9,Marina Beach,beach,13.0500,80.2824,1000,4.3
+10,Meenakshi Temple,temple,9.9195,78.1193,500,4.8
+11,Gateway of India,heritage,18.9220,72.8347,300,4.6
+12,Marine Drive,city,18.9430,72.8238,500,4.5
+13,Elephanta Caves,heritage,18.9633,72.9310,600,4.4
+14,Manali Hills,hill,32.2396,77.1887,5000,4.7
+15,Solang Valley,adventure,32.3165,77.1570,3500,4.6
+16,Rohtang Pass,adventure,32.3700,77.2460,4000,4.7
+17,Jaipur City Palace,heritage,26.9255,75.8236,700,4.6
+18,Hawa Mahal,heritage,26.9239,75.8267,400,4.5
+19,Jaisalmer Fort,heritage,26.9124,70.9128,1000,4.7
+20,Varanasi Ghats,heritage,25.3176,83.0100,500,4.8
+21,Kashi Vishwanath Temple,temple,25.3109,83.0107,300,4.9
+22,Rishikesh River Rafting,adventure,30.0869,78.2676,2000,4.7
+23,Haridwar Ganga Aarti,heritage,29.9457,78.1642,300,4.8
+24,Kerala Backwaters,nature,9.4981,76.3388,3500,4.8
+25,Munnar Tea Gardens,nature,10.0889,77.0595,2500,4.7
+26,Alleppey Beach,beach,9.4981,76.3388,1500,4.5
+27,Sundarbans Forest,nature,21.9497,89.1833,4000,4.6
+28,Victoria Memorial,heritage,22.5448,88.3426,500,4.6
+29,Howrah Bridge,city,22.5850,88.3468,200,4.5
+30,Shillong Hills,hill,25.5788,91.8933,3000,4.6

@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TRIP-Sense — AI Travel Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root {
+  --ink: #0d0f14;
+  --ink2: #141720;
+  --surface: #1a1e2a;
+  --border: rgba(255,255,255,.07);
+  --border2: rgba(255,255,255,.12);
+  --coral: #ff6b4a;
+  --coral2: #ff8f73;
+  --sky: #00c8ff;
+  --mint: #00e5a0;
+  --gold: #ffc84a;
+  --lavender: #b388ff;
+  --text: #f0f2f8;
+  --muted: #7a8099;
+  --muted2: #4a5068;
+  /* NEW FONTS */
+  --display: 'Fraunces', serif;
+  --body: 'Outfit', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font-family:var(--body);overflow-x:hidden;cursor:none}
+
+/* ── CURSOR ── */
+.cursor{position:fixed;width:12px;height:12px;background:var(--coral);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:difference}
+.cursor-ring{position:fixed;width:36px;height:36px;border:1.5px solid rgba(255,107,74,.5);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:transform .12s ease,width .3s,height .3s}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:0 40px;height:70px;display:flex;align-items:center;justify-content:space-between;background:rgba(13,15,20,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{font-family:var(--display);font-size:1.6rem;font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,var(--coral),var(--gold));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.logo span{-webkit-text-fill-color:var(--sky);font-style:italic}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{color:var(--muted);font-family:var(--body);font-size:.88rem;font-weight:500;text-decoration:none;letter-spacing:.2px;transition:color .2s;cursor:none}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{background:var(--coral);color:#fff;border:none;border-radius:50px;padding:9px 22px;font-family:var(--body);font-size:.85rem;font-weight:700;cursor:none;transition:all .25s;letter-spacing:.2px}
+.nav-cta:hover{background:var(--coral2);transform:translateY(-1px);box-shadow:0 8px 25px rgba(255,107,74,.35)}
+.api-pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:50px;padding:6px 14px;font-family:var(--body);font-size:.8rem;color:var(--muted);cursor:none;transition:all .2s}
+.api-pill:hover{border-color:var(--border2);color:var(--text)}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);transition:background .3s}
+.api-dot.on{background:var(--mint);box-shadow:0 0 8px var(--mint)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 40px 60px;position:relative;overflow:hidden;text-align:center}
+.hero-bg{position:absolute;inset:0;overflow:hidden;z-index:0}
+.hero-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.18;animation:float 8s ease-in-out infinite}
+.blob1{width:600px;height:600px;background:var(--coral);top:-100px;left:-100px;animation-delay:0s}
+.blob2{width:500px;height:500px;background:var(--sky);bottom:-100px;right:-100px;animation-delay:-3s}
+.blob3{width:400px;height:400px;background:var(--gold);top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:-5s}
+@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:60px 60px;z-index:0}
+.hero-content{position:relative;z-index:2;max-width:900px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,107,74,.1);border:1px solid rgba(255,107,74,.25);border-radius:50px;padding:6px 16px;font-family:var(--body);font-size:.75rem;font-weight:600;color:var(--coral);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px;animation:fadeUp .6s ease forwards}
+.hero h1{font-family:var(--display);font-size:clamp(3rem,7vw,6rem);font-weight:800;line-height:1.0;letter-spacing:-2px;margin-bottom:22px;animation:fadeUp .6s .1s ease both}
+.hero h1 em{color:var(--coral);font-style:italic}
+.hero h1 .sky{color:var(--sky);font-style:normal}
+.hero-sub{font-family:var(--body);font-size:1.1rem;color:var(--muted);max-width:560px;margin:0 auto 44px;line-height:1.7;font-weight:400;animation:fadeUp .6s .2s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SEARCH BOX ── */
+.search-hero{background:rgba(26,30,42,.92);border:1px solid var(--border2);border-radius:24px;padding:28px 32px;max-width:820px;width:100%;margin:0 auto;backdrop-filter:blur(30px);animation:fadeUp .6s .3s ease both;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.search-tabs{display:flex;gap:4px;margin-bottom:24px;background:rgba(255,255,255,.04);border-radius:12px;padding:4px}
+.stab{flex:1;padding:9px;border-radius:9px;font-family:var(--body);font-size:.8rem;font-weight:600;color:var(--muted);text-align:center;cursor:none;transition:all .2s;letter-spacing:.2px}
+.stab.active{background:var(--coral);color:#fff;box-shadow:0 4px 15px rgba(255,107,74,.3)}
+.stab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.06)}
+.search-fields{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;align-items:end}
+.sfield{display:flex;flex-direction:column;gap:6px}
+.sfield label{font-family:var(--body);font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px}
+.sfield input,.sfield select{background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:12px;padding:12px 16px;color:var(--text);font-family:var(--body);font-size:.88rem;outline:none;transition:all .2s;cursor:text;width:100%}
+.sfield input:focus,.sfield select:focus{border-color:var(--coral);background:rgba(255,107,74,.05)}
+.sfield select{cursor:none}
+.sfield select option{background:#1a1e2a}
+.sfield input::placeholder{color:var(--muted2)}
+.search-btn{background:linear-gradient(135deg,var(--coral),#ff4020);color:#fff;border:none;border-radius:14px;padding:14px 28px;font-family:var(--body);font-size:.92rem;font-weight:700;cursor:none;transition:all .25s;white-space:nowrap;box-shadow:0 8px 25px rgba(255,107,74,.3);display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.search-btn:hover{transform:translateY(-2px);box-shadow:0 14px 35px rgba(255,107,74,.4)}
+.search-btn:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.quick-strip{display:flex;gap:10px;margin-top:20px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.quick-strip::-webkit-scrollbar{display:none}
+.qdest{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:50px;padding:7px 16px;font-family:var(--body);font-size:.78rem;color:var(--muted);cursor:none;white-space:nowrap;transition:all .2s;flex-shrink:0}
+.qdest:hover{background:rgba(255,107,74,.1);border-color:rgba(255,107,74,.3);color:var(--coral)}
+
+/* ── STATS ── */
+.stats-strip{display:flex;max-width:900px;margin:50px auto 0;animation:fadeUp .6s .4s ease both}
+.stat-item{flex:1;text-align:center;padding:20px;border-right:1px solid var(--border)}
+.stat-item:last-child{border-right:none}
+.stat-num{font-family:var(--display);font-size:2rem;font-weight:800;color:var(--text)}
+.stat-num span{color:var(--coral)}
+.stat-label{font-family:var(--body);font-size:.72rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
+
+/* ── SECTIONS ── */
+section{padding:90px 40px;max-width:1300px;margin:0 auto}
+.section-label{font-family:var(--body);font-size:.72rem;font-weight:700;color:var(--coral);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.section-title{font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;letter-spacing:-1px;line-height:1.1;margin-bottom:14px}
+.section-sub{font-family:var(--body);color:var(--muted);font-size:.95rem;line-height:1.7;max-width:540px;margin-bottom:48px}
+
+/* ── RESULTS PANEL ── */
+#results-panel{display:none;padding:40px;background:var(--ink2);border-top:1px solid var(--border)}
+.results-inner{max-width:1300px;margin:0 auto}
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px}
+.results-title{font-family:var(--display);font-size:1.8rem;font-weight:800;letter-spacing:-1px}
+.nlp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.nlp-chip{display:flex;align-items:center;gap:6px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);border-radius:50px;padding:5px 14px;font-family:var(--body);font-size:.75rem;color:var(--sky);font-weight:600}
+.nlp-chip .chip-label{color:var(--muted);font-weight:400}
+
+/* ── DEST CARDS ── */
+.dest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.dest-card{border-radius:20px;overflow:hidden;position:relative;cursor:none;transition:transform .3s,box-shadow .3s;background:var(--surface);border:1px solid var(--border)}
+.dest-card:hover{transform:translateY(-8px);box-shadow:0 30px 60px rgba(0,0,0,.4)}
+.dest-card-img{height:200px;display:flex;align-items:center;justify-content:center;font-size:4rem;position:relative;overflow:hidden}
+.dest-card-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7) 0%,transparent 60%)}
+.dest-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:16px;z-index:2}
+.dest-card-name{font-family:var(--display);font-size:1.2rem;font-weight:700;color:#fff}
+.dest-card-state{font-family:var(--body);font-size:.75rem;color:rgba(255,255,255,.7);margin-top:2px}
+.dest-card-body{padding:16px}
+.dest-card-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.dest-card-rating{font-family:var(--body);font-size:.82rem;font-weight:600;color:var(--gold)}
+.dest-card-budget{font-family:var(--body);font-size:.82rem;color:var(--muted);font-weight:500}
+.dest-card-tags{display:flex;gap:6px;flex-wrap:wrap}
+.dest-tag{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-family:var(--body);font-size:.68rem;color:var(--muted);font-weight:500}
+.dest-score-badge{position:absolute;top:14px;right:14px;background:var(--coral);color:#fff;font-family:var(--body);font-size:.68rem;font-weight:800;border-radius:8px;padding:4px 10px;z-index:3}
+
+/* ── ITINERARY ── */
+.itinerary-wrap{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;margin-top:32px}
+.itin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.itin-title{font-family:var(--display);font-size:1.3rem;font-weight:700}
+.day-tabs{display:flex;gap:8px;margin-bottom:24px;overflow-x:auto;scrollbar-width:none}
+.day-tabs::-webkit-scrollbar{display:none}
+.dtab{padding:8px 20px;border-radius:50px;font-family:var(--body);font-size:.8rem;font-weight:600;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);cursor:none;white-space:nowrap;transition:all .2s}
+.dtab.active{background:var(--coral);border-color:var(--coral);color:#fff}
+.dtab:hover:not(.active){color:var(--text);border-color:var(--border2)}
+.day-content{display:none}
+.day-content.active{display:block}
+.activity{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.activity:last-child{border-bottom:none}
+.act-time-col{width:90px;flex-shrink:0}
+.act-time{font-family:var(--body);font-size:.72rem;font-weight:700;color:var(--coral);text-transform:uppercase;letter-spacing:.5px;padding-top:2px}
+.act-dot{width:9px;height:9px;border-radius:50%;background:var(--coral);margin-top:10px;margin-left:4px;flex-shrink:0}
+.act-main{flex:1}
+.act-name{font-family:var(--body);font-weight:600;font-size:.9rem;margin-bottom:4px}
+.act-desc{font-family:var(--body);font-size:.78rem;color:var(--muted);line-height:1.5}
+.act-cost{font-family:var(--body);font-size:.75rem;color:var(--mint);font-weight:600;margin-top:5px}
+.act-type-badge{display:inline-block;font-family:var(--body);font-size:.65rem;background:rgba(179,136,255,.12);color:var(--lavender);border-radius:4px;padding:2px 7px;margin-top:4px}
+
+/* ── BUDGET ── */
+.budget-section{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}
+.budget-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px}
+.budget-total{font-family:var(--display);font-size:2.2rem;font-weight:800;color:var(--gold);margin:8px 0}
+.budget-bar-wrap{margin:16px 0}
+.budget-bar-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.budget-bar-label{width:140px;font-family:var(--body);font-size:.78rem;color:var(--muted);flex-shrink:0}
+.budget-bar-track{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:10px;overflow:hidden}
+.budget-bar-fill{height:100%;border-radius:10px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.budget-bar-val{width:75px;text-align:right;font-family:var(--body);font-size:.78rem;font-weight:600}
+.per-day{background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:12px;padding:14px;text-align:center;margin-top:12px}
+.per-day-num{font-family:var(--display);font-size:1.5rem;font-weight:800;color:var(--mint)}
+.per-day-label{font-family:var(--body);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+
+/* ── MAP ── */
+.map-section{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-top:24px}
+.map-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.map-title{font-family:var(--display);font-weight:700;font-size:1rem}
+#trip-map{height:420px}
+
+/* ── SENTIMENT ── */
+.sentiment-section{margin-top:40px}
+.sentiment-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px}
+.sent-input-wrap{display:flex;gap:12px;margin-bottom:24px}
+.sent-input{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:14px;padding:14px 18px;color:var(--text);font-family:var(--body);font-size:.88rem;outline:none;resize:none;height:70px;transition:border-color .2s;cursor:text}
+.sent-input:focus{border-color:var(--coral)}
+.sent-btn{background:var(--coral);color:#fff;border:none;border-radius:14px;padding:14px 22px;font-family:var(--body);font-weight:700;font-size:.85rem;cursor:none;transition:all .2s;white-space:nowrap;align-self:flex-start}
+.sent-btn:hover{background:var(--coral2);transform:translateY(-1px)}
+.sent-scores{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.sent-score-box{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.sent-score-label{font-family:var(--body);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.sent-score-val{font-family:var(--display);font-size:1.4rem;font-weight:800}
+.sent-bar-row{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.sent-bar-name{font-family:var(--body);width:80px;font-size:.78rem;color:var(--muted)}
+.sent-bar-track{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden}
+.sent-fill{height:100%;border-radius:10px;transition:width .8s ease}
+.sent-verdict{background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:12px;padding:14px 18px;font-family:var(--body);font-size:.85rem;color:var(--text);line-height:1.6}
+
+/* ── HOW IT WORKS ── */
+.how-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.how-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;position:relative;overflow:hidden;transition:all .3s;cursor:none}
+.how-card:hover{border-color:rgba(255,107,74,.3);transform:translateY(-4px)}
+.how-num{font-family:var(--display);font-size:4rem;font-weight:800;color:rgba(255,255,255,.04);position:absolute;top:10px;right:16px;line-height:1}
+.how-icon{font-size:2rem;margin-bottom:16px}
+.how-title{font-family:var(--display);font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.how-desc{font-family:var(--body);font-size:.82rem;color:var(--muted);line-height:1.6}
+.how-accent{width:36px;height:3px;border-radius:2px;margin-bottom:16px}
+
+/* ── POPULAR ── */
+.popular-scroll{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-top:32px}
+.popular-scroll::-webkit-scrollbar{display:none}
+.pop-card{flex-shrink:0;width:200px;border-radius:16px;overflow:hidden;position:relative;cursor:none;transition:transform .3s}
+.pop-card:hover{transform:translateY(-5px)}
+.pop-img{height:240px;display:flex;align-items:center;justify-content:center;font-size:5rem;position:relative}
+.pop-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.75) 0%,rgba(0,0,0,.1) 60%)}
+.pop-info{position:absolute;bottom:0;left:0;right:0;padding:16px;z-index:2}
+.pop-name{font-family:var(--display);font-weight:700;font-size:1rem;color:#fff}
+.pop-rating{font-family:var(--body);font-size:.75rem;color:var(--gold);margin-top:3px}
+
+/* ── FEATURES ── */
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;transition:all .3s;cursor:none}
+.feat-card:hover{border-color:rgba(255,107,74,.25);transform:translateY(-4px);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.feat-icon{font-size:2.2rem;margin-bottom:16px}
+.feat-title{font-family:var(--display);font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.feat-desc{font-family:var(--body);font-size:.82rem;color:var(--muted);line-height:1.6}
+.feat-accent-line{width:32px;height:3px;border-radius:2px;margin-top:16px}
+
+/* ── CHAT ── */
+.chat-section{position:fixed;bottom:24px;right:24px;z-index:500}
+.chat-fab{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--coral),#ff4020);border:none;color:#fff;font-size:1.4rem;cursor:none;box-shadow:0 8px 30px rgba(255,107,74,.4);transition:all .25s;display:flex;align-items:center;justify-content:center}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 14px 40px rgba(255,107,74,.5)}
+.chat-box{position:absolute;bottom:70px;right:0;width:380px;background:var(--ink2);border:1px solid var(--border2);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);display:none;flex-direction:column;max-height:520px}
+.chat-box.open{display:flex}
+.chat-head{padding:18px 20px;background:linear-gradient(135deg,var(--coral),#ff4020);display:flex;align-items:center;gap:12px}
+.chat-avatar{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.chat-head-info h4{font-family:var(--display);font-size:.95rem;font-weight:700;color:#fff}
+.chat-head-info p{font-family:var(--body);font-size:.72rem;color:rgba(255,255,255,.75)}
+.chat-close{margin-left:auto;cursor:none;font-size:1.1rem;color:rgba(255,255,255,.7);background:none;border:none;padding:4px;transition:color .2s}
+.chat-close:hover{color:#fff}
+.chat-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.cmsg{max-width:88%}
+.cmsg.user{align-self:flex-end}
+.cmsg.bot{align-self:flex-start}
+.cmsg-bubble{padding:10px 14px;border-radius:14px;font-family:var(--body);font-size:.83rem;line-height:1.55}
+.cmsg.user .cmsg-bubble{background:var(--coral);color:#fff;border-radius:14px 14px 0 14px;font-weight:500}
+.cmsg.bot .cmsg-bubble{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:0 14px 14px 14px}
+.chat-input-row{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border)}
+.chat-inp{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:9px 14px;color:var(--text);font-family:var(--body);font-size:.83rem;outline:none;cursor:text;transition:border-color .2s}
+.chat-inp:focus{border-color:var(--coral)}
+.chat-send{background:var(--coral);color:#fff;border:none;border-radius:10px;width:36px;height:36px;font-size:.9rem;cursor:none;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send:hover{background:var(--coral2)}
+.typing-dots{display:none;align-items:center;gap:5px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:0 14px 14px 14px;width:fit-content}
+.typing-dots.show{display:flex}
+.tdot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:tdot .7s infinite}
+.tdot:nth-child(2){animation-delay:.15s}
+.tdot:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.modal-bg.hide{display:none}
+.modal{background:var(--ink2);border:1px solid var(--border2);border-radius:24px;padding:36px;max-width:460px;width:90%;animation:fadeUp .3s ease}
+.modal h3{font-family:var(--display);font-size:1.5rem;font-weight:800;margin-bottom:8px}
+.modal p{font-family:var(--body);color:var(--muted);font-size:.85rem;line-height:1.6;margin-bottom:24px}
+.modal-input{width:100%;background:rgba(255,255,255,.04);border:1.5px solid var(--border2);border-radius:12px;padding:13px 16px;color:var(--text);font-family:var(--body);font-size:.9rem;outline:none;margin-bottom:14px;cursor:text;transition:border-color .2s}
+.modal-input:focus{border-color:var(--coral)}
+.modal-btns{display:flex;gap:10px}
+.modal-save{flex:1;background:var(--coral);color:#fff;border:none;border-radius:12px;padding:12px;font-family:var(--body);font-weight:700;font-size:.88rem;cursor:none;transition:all .2s}
+.modal-save:hover{background:var(--coral2)}
+.modal-skip{flex:1;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--body);font-weight:600;font-size:.88rem;cursor:none;transition:all .2s}
+.modal-skip:hover{border-color:var(--border2);color:var(--text)}
+
+/* ── MISC ── */
+.loader-bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--coral),var(--sky));z-index:9999;width:0;transition:width .3s ease;border-radius:0 2px 2px 0}
+.toast{position:fixed;bottom:100px;right:24px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--body);padding:12px 20px;border-radius:14px;font-size:.82rem;z-index:5000;transform:translateY(20px);opacity:0;transition:all .3s;box-shadow:0 10px 40px rgba(0,0,0,.4);max-width:300px}
+.toast.show{transform:translateY(0);opacity:1}
+.divider{height:1px;background:var(--border);margin:0 40px}
+.btn-outline{background:transparent;border:1.5px solid var(--border2);color:var(--text);border-radius:50px;padding:10px 24px;font-family:var(--body);font-size:.84rem;font-weight:600;cursor:none;transition:all .2s}
+.btn-outline:hover{border-color:var(--coral);color:var(--coral)}
+.scroll-indicator{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-family:var(--body);font-size:.72rem;letter-spacing:1px;animation:bounce2 2s infinite}
+@keyframes bounce2{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+.arrow-down{width:20px;height:20px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg)}
+.ai-thinking{display:flex;align-items:center;gap:10px;font-family:var(--body);color:var(--muted);font-size:.82rem;padding:12px 0}
+.ai-spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--coral);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+footer{background:var(--ink2);border-top:1px solid var(--border);padding:40px;text-align:center;color:var(--muted2);font-family:var(--body);font-size:.78rem;line-height:2}
+footer strong{color:var(--muted)}
+
+/* ── CHANGE-KEY LINK ── */
+.change-key{font-family:var(--body);font-size:.72rem;color:var(--muted);text-decoration:underline;cursor:none;margin-top:8px;display:inline-block;transition:color .2s}
+.change-key:hover{color:var(--coral)}
+
+/* ── SUPPRESS BROKEN IMAGE ICONS ── */
+img{color:transparent}
+img[src=""],img:not([src]){visibility:hidden}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="ring"></div>
+<div class="loader-bar" id="loader-bar"></div>
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">TRIP<span>-Sense</span></div>
+  <div class="nav-links">
+    <a href="#explore" onclick="smoothScroll('explore');return false">Explore</a>
+    <a href="#how" onclick="smoothScroll('how');return false">How it works</a>
+    <div class="api-pill" id="api-pill-wrap">
+      <div class="api-dot" id="api-dot"></div>
+      <span id="api-status-text" style="cursor:pointer" onclick="toggleApiInput()">AI Connected</span>
+    </div>
+    <div id="api-input-bar" style="display:none;position:fixed;top:70px;right:40px;z-index:2000;background:var(--ink2);border:1px solid var(--border2);border-radius:16px;padding:16px 20px;box-shadow:0 20px 60px rgba(0,0,0,.6);min-width:340px">
+      <div style="font-family:var(--display);font-size:1rem;font-weight:700;margin-bottom:6px">Anthropic API Key</div>
+      <div style="font-family:var(--body);font-size:.75rem;color:var(--muted);margin-bottom:12px">Powers real-time AI itineraries, hotels, chat & recommendations. Stored only in your browser.</div>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="api-key-input" placeholder="sk-ant-api03-…" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--body);font-size:.83rem;outline:none"/>
+        <button onclick="saveApiKeyNav()" style="background:var(--coral);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:var(--body);font-weight:700;font-size:.83rem;cursor:pointer;white-space:nowrap">Save</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <span style="font-family:var(--body);font-size:.72rem;color:var(--muted)">No key? App still works with smart local AI.</span>
+        <span onclick="toggleApiInput()" style="font-family:var(--body);font-size:.72rem;color:var(--coral);cursor:pointer">Close</span>
+      </div>
+    </div>
+  </div>
+  <button class="nav-cta" onclick="smoothScroll('plan')">Plan A Trip</button>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="home">
+  <div class="hero-bg">
+    <div class="hero-blob blob1"></div>
+    <div class="hero-blob blob2"></div>
+    <div class="hero-blob blob3"></div>
+    <div class="hero-grid"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">🤖 NLP + Hybrid ML Powered</div>
+    <h1>Travel <em>Smarter</em>,<br/>Explore <span class="sky">Deeper</span></h1>
+    <p class="hero-sub">TRIP-Sense understands your travel language. Just tell us where you want to go and we'll handle everything — itineraries, budgets, routes.</p>
+
+    <!-- SEARCH BOX -->
+    <div class="search-hero" id="plan">
+      <div class="search-tabs">
+        <div class="stab active" onclick="setTab(this,'flights')">Trips</div>
+        <div class="stab" onclick="setTab(this,'hotels')">Hotels</div>
+        <div class="stab" onclick="setTab(this,'packages')">Packages</div>
+      </div>
+
+      <!-- TRIPS TAB -->
+      <div id="tab-flights">
+        <div class="search-fields">
+          <div class="sfield">
+            <label>Where to?</label>
+            <input type="text" id="s-dest" placeholder="Goa, Manali, Kerala…" onkeydown="if(event.key==='Enter')runSearch()"/>
+          </div>
+          <div class="sfield">
+            <label>Days</label>
+            <input type="number" id="s-days" value="3" min="1" max="30"/>
+          </div>
+          <div class="sfield">
+            <label>Budget (₹)</label>
+            <input type="number" id="s-budget" value="20000" step="1000"/>
+          </div>
+          <div class="sfield">
+            <label>&nbsp;</label>
+            <button class="search-btn" onclick="runSearch()" id="search-btn">Search ✨</button>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="sfield" style="margin-bottom:10px">
+            <label>Or describe your trip</label>
+            <input type="text" id="s-nl" placeholder="Plan a 3-day trip to Goa under ₹20000 with beaches and food" style="width:100%" onkeydown="if(event.key==='Enter')runSearch()"/>
+          </div>
+        </div>
+        <div class="quick-strip">
+          <div class="qdest" onclick="quickFill('Goa','3','18000')"><span>🏖️</span>Goa</div>
+          <div class="qdest" onclick="quickFill('Manali','5','25000')"><span>🏔️</span>Manali</div>
+          <div class="qdest" onclick="quickFill('Kerala','4','22000')"><span>🌴</span>Kerala</div>
+          <div class="qdest" onclick="quickFill('Jaipur','3','15000')"><span>🏰</span>Jaipur</div>
+          <div class="qdest" onclick="quickFill('Ladakh','7','45000')"><span>🌄</span>Ladakh</div>
+          <div class="qdest" onclick="quickFill('Andaman','5','35000')"><span>🐠</span>Andaman</div>
+          <div class="qdest" onclick="quickFill('Rishikesh','3','14000')"><span>🙏</span>Rishikesh</div>
+          <div class="qdest" onclick="quickFill('Udaipur','4','20000')"><span>🏛️</span>Udaipur</div>
+        </div>
+      </div>
+
+      <!-- HOTELS TAB -->
+      <div id="tab-hotels" style="display:none">
+        <div class="search-fields">
+          <div class="sfield">
+            <label>City</label>
+            <input type="text" id="h-city" placeholder="Enter city…" onkeydown="if(event.key==='Enter')searchHotels()"/>
+          </div>
+          <div class="sfield">
+            <label>Check-in Date</label>
+            <input type="date" id="h-checkin"/>
+          </div>
+          <div class="sfield">
+            <label>Guests</label>
+            <input type="number" id="h-guests" value="2" min="1" max="20"/>
+          </div>
+          <div class="sfield">
+            <label>&nbsp;</label>
+            <button class="search-btn" onclick="searchHotels()">Find Hotels</button>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="sfield">
+            <label>Budget per night (₹)</label>
+            <input type="number" id="h-budget" value="3000" step="500" style="width:100%"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- PACKAGES TAB -->
+      <div id="tab-packages" style="display:none">
+        <div class="search-fields">
+          <div class="sfield">
+            <label>Destination</label>
+            <input type="text" id="p-dest" placeholder="e.g. Rajasthan" onkeydown="if(event.key==='Enter')searchPackages()"/>
+          </div>
+          <div class="sfield">
+            <label>Duration</label>
+            <select id="p-dur">
+              <option>3-4 Days</option>
+              <option>5-6 Days</option>
+              <option>7-8 Days</option>
+              <option>10+ Days</option>
+            </select>
+          </div>
+          <div class="sfield">
+            <label>Travel Style</label>
+            <select id="p-style">
+              <option>Budget</option>
+              <option>Comfort</option>
+              <option>Luxury</option>
+            </select>
+          </div>
+          <div class="sfield">
+            <label>&nbsp;</label>
+            <button class="search-btn" onclick="searchPackages()">Find Packages</button>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="sfield">
+            <label>Special Interests (optional)</label>
+            <input type="text" id="p-interests" placeholder="e.g. wildlife, temples, beaches…" style="width:100%"/>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-strip">
+    <div class="stat-item"><div class="stat-num">15<span>+</span></div><div class="stat-label">Destinations</div></div>
+    <div class="stat-item"><div class="stat-num">NLP<span></span></div><div class="stat-label">Intent Analysis</div></div>
+    <div class="stat-item"><div class="stat-num">AI<span></span></div><div class="stat-label">Itineraries</div></div>
+    <div class="stat-item"><div class="stat-num">₹0</div><div class="stat-label">Planning Cost</div></div>
+  </div>
+  <div class="scroll-indicator"><div class="arrow-down"></div>SCROLL</div>
+</div>
+
+<!-- RESULTS PANEL -->
+<div id="results-panel">
+  <div class="results-inner">
+    <div class="results-header">
+      <div>
+        <div class="section-label">Search Results</div>
+        <div class="results-title" id="results-title">Your Perfect Trip</div>
+      </div>
+      <button class="btn-outline" onclick="closeResults()">← New Search</button>
+    </div>
+    <div class="nlp-chips" id="nlp-chips"></div>
+    <div style="margin-top:8px">
+      <div class="section-label" style="margin-bottom:12px">Budget Breakdown</div>
+      <div class="budget-section" id="budget-breakdown"></div>
+    </div>
+    <div class="itinerary-wrap" id="itinerary-wrap" style="margin-top:32px">
+      <div class="itin-header">
+        <div class="itin-title">AI-Generated Itinerary</div>
+        <button class="btn-outline" style="font-size:.75rem;padding:7px 16px" onclick="downloadItinerary()">⬇ Download</button>
+      </div>
+      <div id="itin-loading" class="ai-thinking"><div class="ai-spinner"></div>AI is building your itinerary…</div>
+      <div class="day-tabs" id="day-tabs" style="display:none"></div>
+      <div id="day-contents"></div>
+    </div>
+    <div style="margin-top:36px">
+      <div class="section-label" style="margin-bottom:12px">ML Matched Destinations</div>
+      <div class="dest-grid" id="results-dest-grid"></div>
+    </div>
+    <div class="map-section" style="margin-top:24px">
+      <div class="map-header">
+        <div class="map-title">Route Map</div>
+        <div style="font-family:var(--body);font-size:.78rem;color:var(--muted)">Click markers for details</div>
+      </div>
+      <div id="trip-map"></div>
+    </div>
+  </div>
+</div>
+
+<!-- POPULAR -->
+<div class="divider"></div>
+<section id="explore">
+  <div class="section-label">Explore India</div>
+  <div class="section-title">Trending <em style="color:var(--coral)">Destinations</em></div>
+  <div class="section-sub">Handpicked places loved by millions of travellers. Each scored by our hybrid ML engine.</div>
+  <div class="popular-scroll" id="popular-scroll"></div>
+</section>
+
+<!-- HOW IT WORKS -->
+<div class="divider"></div>
+<section id="how">
+  <div class="section-label">The Technology</div>
+  <div class="section-title">How TRIP-Sense <em style="color:var(--sky)">Works</em></div>
+  <div class="section-sub">Four intelligent modules working together to plan your perfect trip.</div>
+  <div class="how-grid">
+    <div class="how-card"><div class="how-num">01</div><div class="how-accent" style="background:var(--coral)"></div><div class="how-icon">🧠</div><div class="how-title">NLP Intent Module</div><div class="how-desc">Processes natural language using spaCy NER + VADER. Extracts destination, duration, budget and interests automatically.</div></div>
+    <div class="how-card"><div class="how-num">02</div><div class="how-accent" style="background:var(--sky)"></div><div class="how-icon">⚡</div><div class="how-title">Hybrid ML Engine</div><div class="how-desc">TF-IDF content-based filtering + collaborative filtering scores destinations by your preferences and budget.</div></div>
+    <div class="how-card"><div class="how-num">03</div><div class="how-accent" style="background:var(--mint)"></div><div class="how-icon">🌍</div><div class="how-title">Context & Routes</div><div class="how-desc">Real-time route optimisation with interactive maps. Adapts suggestions based on season, budget and travel style.</div></div>
+    <div class="how-card"><div class="how-num">04</div><div class="how-accent" style="background:var(--gold)"></div><div class="how-icon">✨</div><div class="how-title">AI Itinerary</div><div class="how-desc">Claude AI generates personalised day-by-day itineraries with specific places, timings, costs and food recommendations.</div></div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<div class="divider"></div>
+<section>
+  <div class="section-label">Why TRIP-Sense</div>
+  <div class="section-title">Everything you need to<br/><em style="color:var(--coral)">travel confidently</em></div>
+  <div class="features-grid">
+    <div class="feat-card"><div class="feat-icon">🗣️</div><div class="feat-title">Natural Language Search</div><div class="feat-desc">Type like you'd tell a friend. Our NLP engine understands intent and extracts all parameters instantly.</div><div class="feat-accent-line" style="background:var(--coral)"></div></div>
+    <div class="feat-card"><div class="feat-icon">🤖</div><div class="feat-title">Hybrid AI Recommendations</div><div class="feat-desc">Content-based + collaborative filtering combined with Claude AI for the most relevant destination matches.</div><div class="feat-accent-line" style="background:var(--sky)"></div></div>
+    <div class="feat-card"><div class="feat-icon">💰</div><div class="feat-title">Smart Budget Planner</div><div class="feat-desc">Auto cost breakdown across accommodation, transport, food and activities based on your travel style.</div><div class="feat-accent-line" style="background:var(--mint)"></div></div>
+    <div class="feat-card"><div class="feat-icon">🗺️</div><div class="feat-title">Interactive Route Maps</div><div class="feat-desc">Visualise your journey with live maps, route lines and attraction markers.</div><div class="feat-accent-line" style="background:var(--gold)"></div></div>
+    <div class="feat-card"><div class="feat-icon">📅</div><div class="feat-title">Day-by-Day Itineraries</div><div class="feat-desc">AI builds complete timed itineraries with morning, afternoon, evening activities and cost estimates.</div><div class="feat-accent-line" style="background:var(--coral2)"></div></div>
+  </div>
+</section>
+
+<footer>
+  <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,#ff6b4a,#ffc84a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px">Your Travel Buddy</div>
+  <div style="margin-top:10px"><strong>Developed by Team:</strong><p> </p> M. Manaswi Priya &nbsp;·&nbsp; G. Praneetha &nbsp;·&nbsp; B. Pavan Kumar &nbsp;·&nbsp; N. Harikrishna</div>
+</footer>
+
+<!-- CHAT WIDGET -->
+<div class="chat-section">
+  <div class="chat-box" id="chat-box">
+    <div class="chat-head">
+      <div class="chat-avatar">🧭</div>
+      <div class="chat-head-info"><h4>TRIP-Sense AI</h4><p>● Online — Ask me anything</p></div>
+      <button class="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="cmsg bot"><div class="cmsg-bubble">👋 Hi! I'm your TRIP-Sense AI travel companion.<br/><br/>Ask me about destinations, itineraries, budgets or anything travel-related! 🌍</div></div>
+      <div class="typing-dots" id="typing-dots"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-inp" id="chat-inp" placeholder="Ask about your trip…" onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+  <button class="chat-fab" onclick="toggleChat()">🧭</button>
+</div>
+
+<script>
+// ── CURSOR ──────────────────────────────────────────────
+const cur = document.getElementById('cur');
+const ring = document.getElementById('ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX; my=e.clientY;
+  cur.style.left=mx+'px'; cur.style.top=my+'px';
+});
+setInterval(()=>{
+  rx+=(mx-rx)*.12; ry+=(my-ry)*.12;
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+},10);
+document.addEventListener('mouseover',e=>{
+  if(e.target.matches('button,a,.qdest,.dest-card,.pop-card,.stab,.dtab,.feat-card,.how-card')) {
+    cur.style.width='20px'; cur.style.height='20px';
+    ring.style.width='50px'; ring.style.height='50px';
+  }
+});
+document.addEventListener('mouseout',e=>{
+  if(e.target.matches('button,a,.qdest,.dest-card,.pop-card,.stab,.dtab,.feat-card,.how-card')) {
+    cur.style.width='12px'; cur.style.height='12px';
+    ring.style.width='36px'; ring.style.height='36px';
+  }
+});
+
+// ── STATE ───────────────────────────────────────────────
+let API_KEY = localStorage.getItem('ts_api_key') || '';
+let chatHistory = [];
+let mapInstance = null;
+let mapMarkers = [];
+let currentItinerary = '';
+
+// ── API KEY NAV ──────────────────────────────────────────
+function toggleApiInput() {
+  const bar = document.getElementById('api-input-bar');
+  bar.style.display = bar.style.display === 'none' ? 'block' : 'none';
+  if (bar.style.display === 'block') document.getElementById('api-key-input').value = API_KEY;
+}
+function saveApiKeyNav() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v) { showToast('Please enter a key'); return; }
+  API_KEY = v;
+  localStorage.setItem('ts_api_key', v);
+  document.getElementById('api-dot').classList.add('on');
+  document.getElementById('api-status-text').textContent = 'AI Connected';
+  document.getElementById('api-input-bar').style.display = 'none';
+  showToast('API key saved! Real-time AI enabled.');
+}
+(function initApiState() {
+  if (API_KEY) {
+    document.getElementById('api-dot').classList.add('on');
+    document.getElementById('api-status-text').textContent = 'AI Connected';
+  }
+})();
+
+// ── DESTINATIONS ────────────────────────────────────────
+const DESTS = [
+  {name:'Goa',       emoji:'🏖️',tags:['beach','food','nightlife'],     rating:4.6,budget:18000,lat:15.2993,lon:74.1240,state:'Goa',            bg:'linear-gradient(160deg,#1a6b4a,#0d4a3a)', desc:'Sun-kissed beaches, vibrant nightlife & fresh seafood'},
+  {name:'Manali',    emoji:'🏔️',tags:['mountain','adventure','trekking'],rating:4.7,budget:22000,lat:32.2432,lon:77.1892,state:'Himachal Pradesh',bg:'linear-gradient(160deg,#1a2a5c,#2a3a7c)', desc:'Snow-capped peaks, river rafting & pine forests'},
+  {name:'Kerala',    emoji:'🌴',tags:['backwater','nature','heritage'],  rating:4.8,budget:24000,lat:10.8505,lon:76.2711,state:'Kerala',          bg:'linear-gradient(160deg,#1a5c2a,#0d3a1a)', desc:"God's Own Country — backwaters, ayurveda & spices"},
+  {name:'Jaipur',    emoji:'🏰',tags:['heritage','culture','food'],     rating:4.5,budget:16000,lat:26.9124,lon:75.7873,state:'Rajasthan',        bg:'linear-gradient(160deg,#6a2a1a,#8a3a20)', desc:'Pink City palaces, forts & authentic Rajasthani cuisine'},
+  {name:'Ladakh',    emoji:'🌄',tags:['mountain','adventure','trekking'],rating:4.9,budget:40000,lat:34.1526,lon:77.5771,state:'Ladakh',           bg:'linear-gradient(160deg,#2a3a5c,#4a5a7c)', desc:'High-altitude desert, monasteries & cosmic starscapes'},
+  {name:'Andaman',   emoji:'🐠',tags:['beach','adventure','diving'],    rating:4.9,budget:35000,lat:11.7401,lon:92.6586,state:'Andaman & Nicobar', bg:'linear-gradient(160deg,#0a4a5c,#0a6a7c)', desc:'Crystal waters, coral reefs & pristine white sand'},
+  {name:'Coorg',     emoji:'☕',tags:['nature','hill','food'],           rating:4.5,budget:15000,lat:12.3375,lon:75.8069,state:'Karnataka',         bg:'linear-gradient(160deg,#2a4a1a,#3a6a2a)', desc:'Coffee plantations, waterfalls & misty hills'},
+  {name:'Rishikesh', emoji:'🙏',tags:['adventure','spiritual','nature'],rating:4.6,budget:14000,lat:30.0869,lon:78.2676,state:'Uttarakhand',       bg:'linear-gradient(160deg,#2a5c3a,#1a4a2a)', desc:'Yoga capital, white water rafting & Ganges ghats'},
+  {name:'Udaipur',   emoji:'🏛️',tags:['heritage','lake','romantic'],   rating:4.7,budget:20000,lat:24.5854,lon:73.7125,state:'Rajasthan',        bg:'linear-gradient(160deg,#4a2a6a,#6a3a8a)', desc:'City of Lakes, royal palaces & sunset boat rides'},
+  {name:'Varanasi',  emoji:'🕌',tags:['heritage','spiritual','culture'],rating:4.6,budget:12000,lat:25.3176,lon:82.9739,state:'Uttar Pradesh',     bg:'linear-gradient(160deg,#5c3a1a,#7c5a2a)', desc:'Oldest city, Ganga aarti & ancient ghats'},
+  {name:'Ooty',      emoji:'🌿',tags:['hill','nature','mountain'],      rating:4.4,budget:14000,lat:11.4102,lon:76.6950,state:'Tamil Nadu',        bg:'linear-gradient(160deg,#1a4a1a,#2a6a2a)', desc:'Queen of hill stations, tea gardens & toy train'},
+  {name:'Mysore',    emoji:'🎆',tags:['heritage','culture','food'],     rating:4.4,budget:13000,lat:12.2958,lon:76.6394,state:'Karnataka',         bg:'linear-gradient(160deg,#3a1a5c,#5a2a7c)', desc:'Royal palaces, incense and Dussehra grandeur'},
+  {name:'Hampi',     emoji:'🗿',tags:['heritage','adventure','history'],rating:4.6,budget:10000,lat:15.3350,lon:76.4600,state:'Karnataka',         bg:'linear-gradient(160deg,#5c4a1a,#7c6a2a)', desc:'Ruins of Vijayanagara Empire amid boulder landscapes'},
+  {name:'Darjeeling',emoji:'🍵',tags:['hill','nature','heritage'],      rating:4.5,budget:18000,lat:27.0360,lon:88.2627,state:'West Bengal',       bg:'linear-gradient(160deg,#1a3a5c,#2a5a7c)', desc:'Tea capital, Himalayan views & toy train rides'},
+  {name:'Mumbai',    emoji:'🌃',tags:['food','culture','nightlife'],    rating:4.3,budget:22000,lat:19.0760,lon:72.8777,state:'Maharashtra',        bg:'linear-gradient(160deg,#1a1a4a,#2a2a6a)', desc:'City of dreams, street food & Bollywood glamour'},
+  {name:'Hyderabad', emoji:'🏛️',tags:['heritage','food','culture'],    rating:4.5,budget:14000,lat:17.3850,lon:78.4867,state:'Telangana',           bg:'linear-gradient(160deg,#3a1a0a,#6a3a1a)', desc:'City of Nizams, Biryani & Pearls — where history meets tech'},
+];
+
+// ── REAL DESTINATION IMAGES ─────────────────────────────
+// Verified Unsplash photo IDs — curated for each specific city/landmark
+const DEST_IMAGES = {
+  'Goa':        'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&q=80',
+  'Manali':     'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80',
+  'Kerala':     'https://images.unsplash.com/photo-1593693411515-c20261bcad6e?w=600&q=80',
+  'Jaipur':     'https://images.unsplash.com/photo-1603262110263-fb0112e7cc33?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Ladakh':     'https://images.unsplash.com/photo-1617824077360-7a77db40aae1?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Andaman':    'https://plus.unsplash.com/premium_photo-1661903221734-11c7d6fc11e7?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Coorg':      'https://images.unsplash.com/photo-1529057299613-a565b7ce93aa?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Rishikesh':  'https://images.unsplash.com/photo-1720819029162-8500607ae232?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Udaipur':    'https://images.unsplash.com/photo-1695956353120-54ce5e91632b?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Varanasi':   'https://images.unsplash.com/photo-1599831069477-b2acdc0bcb91?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Ooty':       'https://images.unsplash.com/photo-1660918738010-295b09857f93?q=80&w=702&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Mysore':     'https://images.unsplash.com/photo-1600112356915-089abb8fc71a?q=80&w=1294&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Hampi':      'https://images.unsplash.com/photo-1689946727963-be60e05fe278?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Darjeeling': 'https://images.unsplash.com/photo-1637737118663-f1a53ee1d5a7?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Mumbai':     'https://images.unsplash.com/photo-1573132223210-d65883b944aa?q=80&w=1494&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  'Hyderabad':  'https://images.unsplash.com/photo-1706768530935-315546bd701a?q=80&w=748&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+};
+function destImageUrl(name) {
+  return DEST_IMAGES[name] || 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600&q=80';
+}
+
+// ── POPULAR CARDS ───────────────────────────────────────
+function renderPopular() {
+  const container = document.getElementById('popular-scroll');
+  container.innerHTML = DESTS.map(d=>`
+    <div class="pop-card" onclick="quickFill('${d.name}','3','${d.budget}')">
+      <div class="pop-img" style="background:${d.bg};overflow:hidden;position:relative">
+        <span id="emoji-${d.name.replace(/\s/g,'-')}" style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:4rem">${d.emoji}</span>
+        <img src="${destImageUrl(d.name)}" alt="${d.name}"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s;z-index:2"
+          onload="this.style.opacity=1;var e=document.getElementById('emoji-${d.name.replace(/\s/g,'-')}');if(e)e.style.display='none';"
+          onerror="this.style.display='none'"/>
+      </div>
+      <div class="pop-info">
+        <div class="pop-name">${d.name}</div>
+        <div class="pop-rating">⭐ ${d.rating} · ₹${(d.budget/1000).toFixed(0)}k</div>
+      </div>
+    </div>`).join('');
+}
+renderPopular();
+
+// ── UTILS ───────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+function setLoader(pct) { document.getElementById('loader-bar').style.width = pct+'%'; }
+function smoothScroll(id) { document.getElementById(id)?.scrollIntoView({behavior:'smooth'}); }
+
+function setTab(el, name) {
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['flights','hotels','packages'].forEach(n=>{
+    const el2 = document.getElementById('tab-'+n);
+    if (el2) el2.style.display = n===name ? 'block' : 'none';
+  });
+}
+
+function quickFill(dest, days, budget) {
+  document.getElementById('s-dest').value = dest;
+  document.getElementById('s-days').value = days;
+  document.getElementById('s-budget').value = budget;
+  document.getElementById('s-nl').value = `Plan a ${days}-day trip to ${dest} under ₹${budget}`;
+  // Switch to trips tab
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.stab')[0].classList.add('active');
+  ['flights','hotels','packages'].forEach(n=>{
+    const el2 = document.getElementById('tab-'+n);
+    if (el2) el2.style.display = n==='flights' ? 'block' : 'none';
+  });
+  smoothScroll('plan');
+}
+
+// ── NLP PARSE ───────────────────────────────────────────
+function parseNL(text) {
+  const t = text.toLowerCase();
+  const days = t.match(/(\d+)\s*day/);
+  const budget = t.match(/(?:under|below|₹|rs|inr)?\s*(\d{4,})/);
+  const dest = text.match(/to\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+  const kws = ['beach','hill','mountain','food','heritage','adventure','backwater','culture','nature','trekking','lake','spiritual','nightlife','diving','wildlife','history'];
+  return {
+    destination: dest ? dest[1] : null,
+    duration:    days   ? parseInt(days[1])   : 3,
+    budget:      budget ? parseInt(budget[1]) : 20000,
+    interests:   kws.filter(k=>t.includes(k)).length ? kws.filter(k=>t.includes(k)) : ['sightseeing']
+  };
+}
+
+// ── HYBRID ML SCORE ─────────────────────────────────────
+function scoreDestinations(parsed) {
+  return DESTS.map(d=>{
+    let score = 0;
+    parsed.interests.forEach(i=>{ if(d.tags.some(t=>t.includes(i)||i.includes(t))) score+=35; });
+    const budgetFit = d.budget <= parsed.budget;
+    score += budgetFit ? 25 : -10;
+    score += d.rating * 6;
+    if (parsed.destination && d.name.toLowerCase().includes(parsed.destination.toLowerCase())) score += 50;
+    return {...d, score: Math.min(99, Math.max(0, Math.round(score))), budgetFit};
+  }).sort((a,b)=>b.score-a.score);
+}
+
+// ── BUDGET CALC ─────────────────────────────────────────
+function calcBudget(total, days, style='comfort') {
+  const m = style==='budget'?0.6 : style==='luxury'?1.8 : 1.0;
+  return {
+    'Accommodation 🏨': Math.round(total*0.35*m),
+    'Transport 🚌':     Math.round(total*0.25),
+    'Food & Dining 🍛': Math.round(total*0.20*m),
+    'Activities 🎯':    Math.round(total*0.12),
+    'Shopping & Misc 🛍️': Math.round(total*0.08),
+  };
+}
+
+// ── CLAUDE API (real-time when key present) ───────────────
+async function callClaude(prompt, system) {
+  if (!API_KEY) return null;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key': API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: system || 'You are TRIP-Sense, an expert Indian travel planner. Be specific, practical and enthusiastic.',
+        messages: [{role:'user', content:prompt}]
+      })
+    });
+    const data = await r.json();
+    if (data.error) { console.error('Claude API:', data.error.message); return null; }
+    return data.content?.map(b=>b.text||'').join('') || null;
+  } catch(e) { console.error('Claude fetch error:', e); return null; }
+}
+
+// ── LOCAL AI ENGINE (fallback — no API key needed) ────────
+
+// Rich destination knowledge base
+const DEST_DATA = {
+  'Goa': {
+    hotels: [
+      {name:'Taj Exotica Resort & Spa', stars:5, price:'₹12,000–₹22,000', area:'Benaulim Beach', amenities:'Private pool, spa, beachfront, fine dining', why:'Iconic luxury with unparalleled beachfront access'},
+      {name:'Alila Diwa Goa', stars:5, price:'₹9,000–₹16,000', area:'Majorda', amenities:'Infinity pool, Ayurveda, paddy field views', why:'Boutique luxury with a authentic Goan cultural vibe'},
+      {name:'The Park Calangute', stars:4, price:'₹4,500–₹8,000', area:'Calangute', amenities:'Pool, rooftop bar, free breakfast', why:'Best location for North Goa nightlife and beaches'},
+      {name:'Zostel Goa', stars:3, price:'₹800–₹2,500', area:'Arambol', amenities:'Dorm & private rooms, common kitchen, social events', why:'Top-rated backpacker hostel with hippie beach vibes'},
+      {name:'OYO Townhouse Panjim', stars:3, price:'₹1,500–₹3,500', area:'Panjim City', amenities:'AC, WiFi, 24hr service, restaurant nearby', why:'Budget-friendly base near Old Goa heritage sites'},
+    ],
+    packages: {
+      Budget: [{name:'Goa on a Shoestring 🏖️', tagline:'Sun, sand & savings', price:'₹8,000/person', days:'3N/4D', includes:'Hostel stay, scooter rental, beach hopping, Old Goa tour', highlights:['Arambol sunrise', 'Spice plantation tour', 'Anjuna flea market'], ideal:'Solo backpackers & budget travellers'},
+               {name:'Beach Bum Special 🍹', tagline:'Chill without the bill', price:'₹10,000/person', days:'4N/5D', includes:'Budget guesthouse, breakfast, ferry ride, South Goa day trip', highlights:['Colva Beach', 'Palolem sunset', 'Cashew feni tasting'], ideal:'College students & young couples'}],
+      Comfort: [{name:'Goa Highlights ✨', tagline:'The perfect Goa getaway', price:'₹18,000/person', days:'4N/5D', includes:'3-star hotel, breakfast & dinner, North & South Goa tour, boat cruise', highlights:['Dudhsagar waterfall','Baga beach party','Fort Aguada sunset'], ideal:'Families & couples seeking comfort'},
+                {name:'Coastal Explorer 🚢', tagline:'See Goa like never before', price:'₹22,000/person', days:'5N/6D', includes:'4-star resort, all meals, dolphin cruise, Portuguese heritage walk', highlights:['Spice farm lunch','Mandovi river cruise','Basilica Bom Jesus'], ideal:'Culture-lovers & foodies'}],
+      Luxury: [{name:'Royal Goa Escape 👑', tagline:'Live like royalty by the sea', price:'₹55,000/person', days:'5N/6D', includes:'5-star resort, private butler, yacht charter, spa sessions', highlights:['Private beach dinner','Helicopter coastal tour','Chef\'s table experience'], ideal:'Honeymooners & luxury seekers'},
+               {name:'Goa Opulence Suite 💎', tagline:'Indulge in every moment', price:'₹75,000/person', days:'6N/7D', includes:'Villa stay, personal concierge, fine dining, island hopping by speedboat', highlights:['Secret beach picnic','Casino night','Sunrise yoga retreat'], ideal:'Anniversary & premium celebratory trips'}],
+    },
+    itinerary: {
+      1: {title:'Arrival & North Goa Vibes', acts:[{time:'Morning',place:'Calangute Beach',desc:'Settle in and take a refreshing dip at Goa\'s most famous beach stretch',cost:'₹0'},{time:'Afternoon',place:'Fort Aguada',desc:'Explore the 17th-century Portuguese fort with panoramic Arabian Sea views',cost:'₹30'},{time:'Evening',place:'Baga Beach Shacks',desc:'Sundowner cocktails and fresh seafood at iconic beach shacks',cost:'₹800'},{time:'Night',place:'Tito\'s Street, Baga',desc:'Experience Goa\'s legendary nightlife on the strip',cost:'₹1,200'}]},
+      2: {title:'Heritage & Culture Trail', acts:[{time:'Morning',place:'Basilica of Bom Jesus',desc:'UNESCO World Heritage Site housing St. Francis Xavier\'s mortal remains',cost:'₹0'},{time:'Afternoon',place:'Old Goa & Se Cathedral',desc:'Walk through Goa\'s colonial past amid stunning baroque architecture',cost:'₹0'},{time:'Evening',place:'Panjim Latin Quarter',desc:'Stroll through colourful Fontainhas neighbourhood, Goa\'s heritage precinct',cost:'₹0'},{time:'Night',place:'Ritz Classic Restaurant',desc:'Authentic Goan prawn curry and fish thali dinner in Panjim',cost:'₹600'}]},
+      3: {title:'South Goa Serenity', acts:[{time:'Morning',place:'Palolem Beach',desc:'The most scenic crescent beach in Goa — swim in calm turquoise waters',cost:'₹0'},{time:'Afternoon',place:'Butterfly Beach',desc:'Hidden gem accessible by boat — pristine sands with zero crowds',cost:'₹300'},{time:'Evening',place:'Colva Beach Sunset',desc:'Watch the golden sunset at Goa\'s longest beach',cost:'₹0'},{time:'Night',place:'Martin\'s Corner, Betalbatim',desc:'Legendary Goan seafood restaurant — crab xec xec and prawn rechado',cost:'₹1,000'}]},
+      4: {title:'Adventure & Departure', acts:[{time:'Morning',place:'Dudhsagar Waterfall',desc:'One of India\'s tallest waterfalls — jeep safari through dense jungle',cost:'₹800'},{time:'Afternoon',place:'Spice Plantation, Ponda',desc:'Guided tour of aromatic spice garden followed by a traditional Goan lunch',cost:'₹500'},{time:'Evening',place:'Anjuna Flea Market',desc:'Browse handicrafts, jewellery and local produce at the famous weekly market',cost:'₹500'},{time:'Night',place:'Mapusa or Airport',desc:'Departure transfers and fond farewell to Goa',cost:'₹400'}]},
+    }
+  },
+  'Manali': {
+    hotels: [
+      {name:'Span Resort & Spa', stars:5, price:'₹12,000–₹20,000', area:'Kullu-Manali Highway', amenities:'River-facing rooms, spa, bonfire, adventure sports desk', why:'Nestled beside the Beas river — pure mountain luxury'},
+      {name:'The Himalayan', stars:5, price:'₹9,500–₹15,000', area:'Old Manali', amenities:'Mountain views, heated pool, fine dining, trekking packages', why:'Heritage property with breathtaking Rohtang views'},
+      {name:'Hotel Whispering Winds', stars:3, price:'₹3,000–₹6,000', area:'Mall Road', amenities:'Central location, valley views, free parking, restaurant', why:'Best value for money with direct Mall Road access'},
+      {name:'Snow Valley Resorts', stars:4, price:'₹5,500–₹9,000', area:'Hadimba Road', amenities:'Log cabins, bonfire, mountain views, buffet breakfast', why:'Cozy wooden cottages with Himalayan charm'},
+      {name:'Zostel Manali', stars:2, price:'₹600–₹1,800', area:'Old Manali', amenities:'Dorms & private rooms, rooftop café, trek booking desk', why:'Best hostel for solo adventurers and trekkers'},
+    ],
+    packages: {
+      Budget: [{name:'Manali Adventure Starter 🏔️', tagline:'Mountains on a budget', price:'₹9,000/person', days:'4N/5D', includes:'Guesthouse, breakfast, Rohtang day trip, Solang Valley', highlights:['Snow play at Rohtang','Hadimba Temple','Old Manali café hop'], ideal:'Budget backpackers & first-time visitors'}],
+      Comfort: [{name:'Himalayan Escape ⛰️', tagline:'Comfort meets adventure', price:'₹20,000/person', days:'5N/6D', includes:'3-star hotel, all meals, Rohtang Pass, river rafting, Kasol day trip', highlights:['White water rafting Beas','Hidimba Devi Temple','Naggar Castle'], ideal:'Couples & friend groups'}],
+      Luxury: [{name:'Royal Mountain Retreat 👑', tagline:'Where peaks meet luxury', price:'₹50,000/person', days:'6N/7D', includes:'5-star resort, private guide, helicopter Rohtang, snow activities, spa', highlights:['Helicopter snow landing','Private riverside dinner','Luxury tent camping'], ideal:'Honeymooners & premium travellers'}],
+    },
+    itinerary: {
+      1: {title:'Arrival & Mall Road Magic', acts:[{time:'Morning',place:'Mall Road, Manali',desc:'Stroll the vibrant main street, shop for woolens and local handicrafts',cost:'₹500'},{time:'Afternoon',place:'Hadimba Devi Temple',desc:'Ancient cedar forest temple dedicated to goddess Hadimba — serene & mystical',cost:'₹0'},{time:'Evening',place:'Manu Temple & Old Manali',desc:'Explore the origin town, visit cafés and the ancient Manu Maharishi shrine',cost:'₹0'},{time:'Night',place:'Johnson\'s Café, Old Manali',desc:'Legendary Manali café — trout fish and apple pie with mountain views',cost:'₹700'}]},
+      2: {title:'Snow & Adventure at Solang', acts:[{time:'Morning',place:'Solang Valley',desc:'Snow activities — zorbing, skiing, rope way — with panoramic Himalayan vistas',cost:'₹1,200'},{time:'Afternoon',place:'Beas River Rafting',desc:'Grade II-III white water rafting through thrilling Beas River gorges',cost:'₹800'},{time:'Evening',place:'Vashisht Hot Springs',desc:'Soak in natural sulphur hot springs — perfect after a day of adventure',cost:'₹50'},{time:'Night',place:'Drifter\'s Inn, Vashisht',desc:'Cozy village dinner — Dal makhani, roti and locally-brewed cider',cost:'₹500'}]},
+      3: {title:'Rohtang Pass Expedition', acts:[{time:'Morning',place:'Rohtang Pass (3978m)',desc:'Drive to India\'s famous mountain pass — snow-capped peaks and stunning valleys',cost:'₹1,500'},{time:'Afternoon',place:'Atal Tunnel, Sissu',desc:'Walk through Asia\'s longest highway tunnel, view Lahaul Valley from above',cost:'₹0'},{time:'Evening',place:'Naggar Castle',desc:'Medieval Kullu Kingdom palace converted into a heritage hotel — art gallery inside',cost:'₹100'},{time:'Night',place:'Casa Bella Vista, Manali',desc:'Rooftop dinner with stargazing and views of the glowing valley',cost:'₹800'}]},
+      4: {title:'Trekking & Nature', acts:[{time:'Morning',place:'Jogini Waterfall Trek',desc:'3km scenic trek through forests to a beautiful tiered waterfall',cost:'₹0'},{time:'Afternoon',place:'Kullu Valley Sightseeing',desc:'Visit Bijli Mahadev temple and panoramic Kullu river valley viewpoints',cost:'₹300'},{time:'Evening',place:'Tibetan Monastery, Manali',desc:'Peaceful Buddhist monastery with prayer wheels and thangka paintings',cost:'₹0'},{time:'Night',place:'Café 1947, Mall Road',desc:'Farewell dinner — butter chicken, naan and lassi to remember',cost:'₹600'}]},
+    }
+  },
+  'Kerala': {
+    hotels: [
+      {name:'Kumarakom Lake Resort', stars:5, price:'₹15,000–₹28,000', area:'Kumarakom', amenities:'Backwater villas, Ayurveda spa, infinity pool, heritage houseboats', why:'Best luxury backwater resort in all of Kerala'},
+      {name:'Taj Malabar Resort', stars:5, price:'₹12,000–₹22,000', area:'Cochin', amenities:'Harbour views, pool, multi-cuisine, heritage wing', why:'Colonial elegance meets modern luxury in Kochi'},
+      {name:'Fragrant Nature Backwater Resort', stars:4, price:'₹6,000–₹10,000', area:'Kollam', amenities:'Houseboat, Ayurveda, Kerala cuisine, backwater tours', why:'Authentic backwater experience at comfort pricing'},
+      {name:'Hotel Arboretum', stars:3, price:'₹2,500–₹4,500', area:'Munnar', amenities:'Tea estate views, restaurant, guided walks', why:'Ideal base for Munnar tea garden exploration'},
+      {name:'Zostel Kochi', stars:2, price:'₹700–₹2,000', area:'Fort Kochi', amenities:'Dorms, social lounge, bicycle rental, tour desk', why:'Perfect for solo travellers in colonial Fort Kochi'},
+    ],
+    packages: {
+      Budget: [{name:'Kerala Budget Bliss 🌴', tagline:'Gods Own Country on a budget', price:'₹12,000/person', days:'5N/6D', includes:'Guesthouse, breakfast, houseboat day cruise, Munnar, Kochi sightseeing', highlights:['Alleppey backwaters','Munnar tea gardens','Fort Kochi walk'], ideal:'Budget travellers & backpackers'}],
+      Comfort: [{name:'Kerala Treasures ✨', tagline:'The classic Kerala circuit', price:'₹28,000/person', days:'7N/8D', includes:'3-4 star hotels, all meals, private houseboat night, Ayurveda session, Theyyam show', highlights:['Periyar Wildlife Sanctuary','Kovalam beach','Kathakali performance'], ideal:'Couples, families & culture enthusiasts'}],
+      Luxury: [{name:'Regal Kerala 👑', tagline:'Kerala\'s finest experiences', price:'₹70,000/person', days:'8N/9D', includes:'5-star resorts & heritage villas, private houseboat, Panchakarma Ayurveda, elephant safari', highlights:['Wayanad jungle camp','Houseboat under stars','Private Kathakali show'], ideal:'Luxury seekers & wellness travellers'}],
+    },
+    itinerary: {
+      1: {title:'Fort Kochi & Colonial Charm', acts:[{time:'Morning',place:'Chinese Fishing Nets, Fort Kochi',desc:'Watch traditional cantilevered Chinese nets in action at sunrise over the harbour',cost:'₹0'},{time:'Afternoon',place:'Mattancherry Palace & Jewish Synagogue',desc:'16th-century Dutch palace with Kerala murals; oldest active synagogue in the Commonwealth',cost:'₹10'},{time:'Evening',place:'Fort Kochi Promenade',desc:'Walk the breezy sea-facing boulevard lined with colonial bungalows and street art',cost:'₹0'},{time:'Night',place:'Kashi Art Café, Fort Kochi',desc:'Kerala prawn curry and fresh coconut desserts in an art gallery setting',cost:'₹700'}]},
+      2: {title:'Backwaters of Alleppey', acts:[{time:'Morning',place:'Alleppey Houseboat',desc:'Board a traditional kettuvallam houseboat for an overnight backwater cruise',cost:'₹4,000'},{time:'Afternoon',place:'Backwater Villages',desc:'Drift past paddy fields, coconut groves and village life on narrow canals',cost:'₹0'},{time:'Evening',place:'Vembanad Lake',desc:'Sunset on India\'s longest lake — flamingo flocks and fishing villages',cost:'₹0'},{time:'Night',place:'Houseboat Deck',desc:'Candlelit Kerala sadya dinner with drumstick curry, appam and toddy',cost:'₹0'}]},
+      3: {title:'Munnar Tea Gardens', acts:[{time:'Morning',place:'Tea Museum, Munnar',desc:'Learn the story of Munnar tea — from leaf to cup — with tasting session',cost:'₹150'},{time:'Afternoon',place:'Eravikulam National Park',desc:'Home of the endangered Nilgiri Tahr — stunning Western Ghats landscape',cost:'₹125'},{time:'Evening',place:'Top Station Viewpoint',desc:'Highest peak in Munnar at 1700m — panoramic view of Tamil Nadu border hills',cost:'₹0'},{time:'Night',place:'Rapsy Restaurant, Munnar',desc:'Kerala fish fry, Kerala porotta and filter coffee in cozy local restaurant',cost:'₹400'}]},
+      4: {title:'Thekkady Wildlife & Spices', acts:[{time:'Morning',place:'Periyar Wildlife Sanctuary',desc:'Boat safari on Periyar Lake — spot wild elephants, bison and exotic birds',cost:'₹300'},{time:'Afternoon',place:'Abraham\'s Spice Garden',desc:'Guided tour of cardamom, pepper, vanilla and nutmeg plantation with lunch',cost:'₹600'},{time:'Evening',place:'Mudra Cultural Centre',desc:'Traditional Kalaripayattu martial arts performance — breathtaking acrobatics',cost:'₹400'},{time:'Night',place:'Hotel Aranya, Thekkady',desc:'Spiced Kerala fish curry and tender coconut pudding farewell dinner',cost:'₹600'}]},
+    }
+  },
+  'Jaipur': {
+    hotels: [
+      {name:'Rambagh Palace', stars:5, price:'₹30,000–₹60,000', area:'Bhawani Singh Road', amenities:'Heritage royal suites, polo ground, spa, fine dining', why:'Actual Maharaja\'s palace — the most iconic hotel in Rajasthan'},
+      {name:'ITC Rajputana', stars:5, price:'₹8,000–₹15,000', area:'Palace Road', amenities:'Pool, multiple restaurants, spa, club floor', why:'Rajasthani architecture with full 5-star amenities'},
+      {name:'Pearl Palace Heritage', stars:3, price:'₹2,500–₹5,000', area:'Hathroi Fort Area', amenities:'Rooftop restaurant, beautiful decor, tour desk', why:'Award-winning boutique hotel with rooftop café views'},
+      {name:'Hotel Arya Niwas', stars:3, price:'₹1,500–₹3,000', area:'Sansar Chandra Road', amenities:'Garden, restaurant, yoga classes, heritage tours', why:'Comfortable budget stay with great local travel advice'},
+      {name:'Zostel Jaipur', stars:2, price:'₹500–₹1,500', area:'Near Hawa Mahal', amenities:'Dorms, rooftop, walking tours, bicycle rental', why:'Best backpacker location — steps from Hawa Mahal'},
+    ],
+    packages: {
+      Budget: [{name:'Pink City Express 🏰', tagline:'Royal Rajasthan on a budget', price:'₹7,000/person', days:'3N/4D', includes:'Budget hotel, breakfast, Amer Fort, City Palace, bazaar walk', highlights:['Hawa Mahal sunrise','Nahargarh Fort sunset','Johari Bazaar shopping'], ideal:'Solo travellers & weekend getaway seekers'}],
+      Comfort: [{name:'Rajasthan Royal 👘', tagline:'Live the Rajput legacy', price:'₹18,000/person', days:'4N/5D', includes:'Heritage hotel, all meals, elephant ride, cultural show, Pushkar day trip', highlights:['Amber Fort elephant','Chokhi Dhani village dinner','Albert Hall Museum'], ideal:'Couples & culture lovers'}],
+      Luxury: [{name:'Maharaja\'s Jaipur 👑', tagline:'Live the royal Rajasthani life', price:'₹60,000/person', days:'5N/6D', includes:'Palace hotel, royal dining, private guide, hot air balloon, luxury caravan to Pushkar', highlights:['Hot air balloon ride','Private polo experience','Jewel workshop tour'], ideal:'Luxury & heritage enthusiasts'}],
+    },
+    itinerary: {
+      1: {title:'Forts & Pink City Panoramas', acts:[{time:'Morning',place:'Amber Fort',desc:'Majestic 16th-century Rajput fort — ride an elephant or jeep up the hill',cost:'₹500'},{time:'Afternoon',place:'City Palace & Museum',desc:'Royal palace complex still home to the Jaipur royal family — stunning Indo-Saracenic architecture',cost:'₹500'},{time:'Evening',place:'Nahargarh Fort',desc:'Hilltop fort with the most breathtaking sunset views over the Pink City',cost:'₹200'},{time:'Night',place:'Suvarna Mahal, Rambagh Palace',desc:'Rajasthani thali with live folk music in a 19th-century palace dining room',cost:'₹2,000'}]},
+      2: {title:'Bazaars & Crafts Trail', acts:[{time:'Morning',place:'Hawa Mahal',desc:'Palace of Winds — 953 windows built for royal women to observe street processions',cost:'₹50'},{time:'Afternoon',place:'Johari & Bapu Bazaar',desc:'Shop for Rajasthani gems, block-printed fabrics, mojri shoes and lac bangles',cost:'₹1,000'},{time:'Evening',place:'Jal Mahal (Water Palace)',desc:'Striking palace in the middle of Man Sagar Lake — best seen at dusk',cost:'₹0'},{time:'Night',place:'Laxmi Misthan Bhandar (LMB)',desc:'Famous Jaipur sweet shop & restaurant — pyaaz kachori, ghewar and rabri',cost:'₹400'}]},
+      3: {title:'Temples & Royal Legacy', acts:[{time:'Morning',place:'Birla Mandir',desc:'Stunning white marble temple with panoramic Pink City views',cost:'₹0'},{time:'Afternoon',place:'Jantar Mantar Observatory',desc:'UNESCO World Heritage Site — world\'s largest stone sundial and astronomical instruments',cost:'₹200'},{time:'Evening',place:'Chokhi Dhani Village',desc:'Rajasthani cultural village — camel rides, puppet shows, folk dance and more',cost:'₹800'},{time:'Night',place:'Chokhi Dhani Traditional Dinner',desc:'Authentic Rajasthani thali dinner sitting cross-legged on the floor',cost:'₹0'}]},
+    }
+  },
+  'Ladakh': {
+    hotels: [
+      {name:'The Grand Dragon Ladakh', stars:5, price:'₹12,000–₹20,000', area:'Leh City', amenities:'Mountain views, heated rooms, spa, rooftop restaurant', why:'Best luxury hotel in Ladakh with 360° Himalayan panoramas'},
+      {name:'Stok Palace Heritage Hotel', stars:4, price:'₹8,000–₹14,000', area:'Stok Village', amenities:'Royal palace stay, Indus valley views, traditional decor', why:'Stay in an actual Ladakhi royal palace'},
+      {name:'Eco Retreat Leh', stars:3, price:'₹3,500–₹6,500', area:'Near Leh Market', amenities:'Solar-powered, restaurant, trekking desk, oxygen support', why:'Eco-friendly stay with responsible tourism values'},
+      {name:'Hotel Yak Tail', stars:3, price:'₹2,000–₹4,000', area:'Leh City Centre', amenities:'Central location, restaurant, warm rooms, tour booking', why:'Classic Ladakh budget hotel with excellent location'},
+      {name:'Pangong Eco Camps', stars:2, price:'₹3,000–₹5,000', area:'Pangong Tso Lake', amenities:'Luxury tents, bonfire, mess tent, stargazing', why:'Unbeatable location right on Pangong Lake shore'},
+    ],
+    packages: {
+      Budget: [{name:'Leh Ladakh Basics 🏔️', tagline:'Mountains on a shoestring', price:'₹18,000/person', days:'6N/7D', includes:'Guesthouse, breakfast, Pangong day trip, Nubra Valley, local monastery visits', highlights:['Pangong Tso sunrise','Khardung La pass','Camel safari Nubra'], ideal:'Budget adventurers & solo trekkers'}],
+      Comfort: [{name:'Ladakh Complete 🌄', tagline:'The full Ladakh experience', price:'₹35,000/person', days:'7N/8D', includes:'3-star hotels + Pangong tent, all meals, Sham Valley trek, Royal Enfield rental, all permits', highlights:['Hemis Festival (if in season)','Tso Moriri lake','Zanskar gorge view'], ideal:'Adventure couples & trekking groups'}],
+      Luxury: [{name:'Royal Ladakh 👑', tagline:'High altitude, high luxury', price:'₹75,000/person', days:'8N/9D', includes:'Palace hotel, private guide, helicopter tour, luxury tent Pangong, gourmet meals, all permits', highlights:['Helicopter to Khardung La','Private monastery ceremony','Luxury Pangong lakeside camp'], ideal:'Premium adventure & luxury seekers'}],
+    },
+    itinerary: {
+      1: {title:'Leh Acclimatisation & Monasteries', acts:[{time:'Morning',place:'Leh Palace & Namgyal Tsemo Gompa',desc:'Rest and acclimatise — gentle stroll to the 16th-century royal palace overlooking Leh',cost:'₹100'},{time:'Afternoon',place:'Shanti Stupa',desc:'White-domed Buddhist stupa with the best panoramic view of Leh valley',cost:'₹0'},{time:'Evening',place:'Leh Market',desc:'Browse pashmina shawls, prayer wheels, turquoise jewellery and dried apricots',cost:'₹500'},{time:'Night',place:'Tibetan Kitchen, Leh',desc:'Thukpa soup, momos and Ladakhi butter tea to aid acclimatisation',cost:'₹400'}]},
+      2: {title:'Pangong Tso — Blue of the Himalayas', acts:[{time:'Morning',place:'Khardung La Pass (5,359m)',desc:'Drive through one of the world\'s highest motorable passes — snow and blue skies',cost:'₹0'},{time:'Afternoon',place:'Pangong Tso Lake',desc:'Arrive at the stunning 134km high-altitude lake — iridescent blue waters changing colour by the hour',cost:'₹0'},{time:'Evening',place:'Pangong Lakeside',desc:'Witness the magical sunset that turns the lake gold, orange and crimson',cost:'₹0'},{time:'Night',place:'Pangong Eco Camp',desc:'Bonfire dinner under the densest starry sky you\'ll ever see at 4,350m altitude',cost:'₹3,500'}]},
+      3: {title:'Nubra Valley Sand Dunes', acts:[{time:'Morning',place:'Diskit Monastery',desc:'Largest and oldest monastery in Nubra Valley — giant Maitreya Buddha statue',cost:'₹100'},{time:'Afternoon',place:'Hunder Sand Dunes',desc:'Surreal cold desert dunes — ride a double-humped Bactrian camel in the Himalayas',cost:'₹400'},{time:'Evening',place:'Sumur Village',desc:'Meet local Ladakhi families — taste home-cooked skyu and chang barley beer',cost:'₹200'},{time:'Night',place:'Nubra Ethnic Camp',desc:'Traditional Ladakhi tent stay with heating, dinner under the stars',cost:'₹3,000'}]},
+      4: {title:'Monasteries & Magnetic Hill', acts:[{time:'Morning',place:'Hemis Monastery',desc:'Largest monastery in Ladakh — impressive thangkas and three-storey Buddha statue',cost:'₹100'},{time:'Afternoon',place:'Thiksey Monastery',desc:'12-storey clifftop monastery resembling Potala Palace in Lhasa, Tibet',cost:'₹100'},{time:'Evening',place:'Magnetic Hill, Leh',desc:'Mysterious hill where vehicles appear to roll uphill against gravity',cost:'₹0'},{time:'Night',place:'Bon Appetit, Leh',desc:'Continental and Indian fusion dinner at Leh\'s favourite restaurant',cost:'₹700'}]},
+    }
+  },
+  'Andaman': {
+    hotels: [
+      {name:'Barefoot at Havelock', stars:5, price:'₹14,000–₹25,000', area:'Havelock Island', amenities:'Eco-resort, private beach, PADI dive centre, ayurveda', why:'India\'s best eco-luxury beach resort on Radhanagar Beach'},
+      {name:'SeaShell Hotel, Port Blair', stars:4, price:'₹6,000–₹11,000', area:'Port Blair', amenities:'Pool, sea view, restaurant, tour desk, water sports', why:'Best hotel in Port Blair with stunning Andaman Sea views'},
+      {name:'Symphony Palms Beach Resort', stars:3, price:'₹4,000–₹7,000', area:'Neil Island', amenities:'Beach access, restaurant, snorkelling gear, bonfire', why:'Peaceful Neil Island retreat for nature lovers'},
+      {name:'TSG Blue Resort', stars:3, price:'₹3,000–₹5,500', area:'Havelock', amenities:'Close to Radhanagar beach, restaurant, scooter rental', why:'Excellent value with easy beach access'},
+      {name:'Shreyas Residency', stars:2, price:'₹1,200–₹2,500', area:'Port Blair City', amenities:'AC rooms, restaurant nearby, travel desk', why:'Budget stay well-connected to Port Blair ferry terminal'},
+    ],
+    packages: {
+      Budget: [{name:'Andaman Basics 🐠', tagline:'Island paradise, honest price', price:'₹18,000/person', days:'5N/6D', includes:'Budget hotel + resort, breakfast, Havelock & Neil Island ferry, snorkelling', highlights:['Radhanagar Beach sunset','Cellular Jail night show','Elephant Beach snorkel'], ideal:'Budget beach lovers & solo travellers'}],
+      Comfort: [{name:'Island Hopper ✨', tagline:'The best of the Andamans', price:'₹35,000/person', days:'6N/7D', includes:'3-4 star resorts, all meals, scuba diving, glass-bottom boat, Baratang trip', highlights:['Scuba at Havelock','Baratang limestone caves','Neil Island bicycle tour'], ideal:'Couples & adventure seekers'}],
+      Luxury: [{name:'Andaman Royale 👑', tagline:'The ultimate island escape', price:'₹80,000/person', days:'7N/8D', includes:'5-star eco-resort, private boat charter, PADI open water course, helicopter transfer, sunset cruise', highlights:['Helicopter island hop','Private coral reef dive','Bioluminescent beach night walk'], ideal:'Luxury couples & diving enthusiasts'}],
+    },
+    itinerary: {
+      1: {title:'Port Blair Arrival & History', acts:[{time:'Morning',place:'Cellular Jail, Port Blair',desc:'India\'s most haunting colonial prison — "Kala Pani" where freedom fighters were imprisoned',cost:'₹30'},{time:'Afternoon',place:'Ross Island',desc:'Former British administrative HQ — now a hauntingly beautiful ruin overtaken by jungle',cost:'₹150'},{time:'Evening',place:'Aberdeen Bazaar, Port Blair',desc:'Explore the local market — Andamanese shells, pearls and dried fish',cost:'₹300'},{time:'Night',place:'Annapurna Restaurant',desc:'Fresh reef fish tikka, prawn masala and kokum juice in Port Blair\'s top restaurant',cost:'₹700'}]},
+      2: {title:'Radhanagar Beach & Havelock', acts:[{time:'Morning',place:'Radhanagar Beach (Beach 7)',desc:'Asia\'s best beach (Time Magazine) — pristine white sand, turquoise sea, thick forest backdrop',cost:'₹0'},{time:'Afternoon',place:'Elephant Beach Snorkelling',desc:'Glass-clear water with vibrant coral reefs — colourful fish, sea turtles and rays',cost:'₹1,200'},{time:'Evening',place:'Havelock Jetty Sunset',desc:'Watch fishing boats return as the sky turns orange over the Andaman Sea',cost:'₹0'},{time:'Night',place:'Fat Martin\'s, Havelock',desc:'Beachside grilled snapper and Kingfisher beer at a laid-back open-air restaurant',cost:'₹800'}]},
+      3: {title:'Scuba & Neil Island', acts:[{time:'Morning',place:'Scuba Diving, Havelock',desc:'Discover the underwater world — coral gardens, lionfish, clownfish and moray eels',cost:'₹3,500'},{time:'Afternoon',place:'Neil Island Ferry',desc:'Short ferry to tranquil Neil Island — rent a bicycle and explore at leisure',cost:'₹400'},{time:'Evening',place:'Natural Bridge, Neil Island',desc:'Stunning natural rock formation — best visited at low tide',cost:'₹0'},{time:'Night',place:'Blue Sea Restaurant, Neil Island',desc:'Fresh lobster and coconut prawn curry by candlelight on the beach',cost:'₹1,000'}]},
+    }
+  },
+  'Rishikesh': {
+    hotels: [
+      {name:'Aloha on the Ganges', stars:4, price:'₹6,000–₹11,000', area:'Near Laxman Jhula', amenities:'Ganga views, yoga shala, spa, organic restaurant', why:'Perfect blend of adventure and spiritual luxury'},
+      {name:'Taj Rishikesh Resort & Spa', stars:5, price:'₹14,000–₹25,000', area:'Dehradun Road', amenities:'Infinity pool, rafting, yoga, Ganga-facing rooms', why:'Luxury mountain resort with full adventure sports'},
+      {name:'Zostel Rishikesh', stars:2, price:'₹500–₹1,500', area:'Tapovan', amenities:'Ganga views, yoga classes, bonfire, bungee desk', why:'Best social hostel for backpackers and solo adventurers'},
+      {name:'Parmarth Niketan Ashram', stars:1, price:'₹800–₹2,000', area:'Ram Jhula', amenities:'Ashram stay, yoga twice daily, Ganga aarti, sattvic meals', why:'Authentic spiritual experience on the Ganges banks'},
+      {name:'Rishikesh View Hotel', stars:3, price:'₹2,500–₹4,500', area:'Muni ki Reti', amenities:'River views, restaurant, yoga hall, parking', why:'Great value with spectacular Ganga and hill views'},
+    ],
+    packages: {
+      Budget: [{name:'Rishikesh Adventure 🙏', tagline:'Thrills, yoga and the Ganga', price:'₹6,000/person', days:'3N/4D', includes:'Hostel stay, breakfast, white water rafting, bungee, yoga class', highlights:['Ganga aarti at Triveni Ghat','Laxman Jhula walk','Beatles Ashram'], ideal:'Backpackers & young adventurers'}],
+      Comfort: [{name:'Yoga & Adventure Retreat ⛰️', tagline:'Balance body, mind and thrills', price:'₹15,000/person', days:'4N/5D', includes:'3-star hotel, all meals, multi-day yoga retreat, rafting, cliff jumping, Neelkanth temple', highlights:['Sunrise yoga','Camping under stars','Waterfall trek'], ideal:'Wellness seekers & adventure couples'}],
+      Luxury: [{name:'Himalayan Wellness 👑', tagline:'Ultimate yoga & spa escape', price:'₹40,000/person', days:'5N/6D', includes:'5-star resort, all meals, private yoga instructor, Panchakarma Ayurveda, helicopter to Kedarnath viewpoint', highlights:['Private Ganga puja ceremony','Luxury jungle camping','Thermal spa sessions'], ideal:'Wellness & luxury retreat seekers'}],
+    },
+    itinerary: {
+      1: {title:'Arrival, Aarti & River Vibes', acts:[{time:'Morning',place:'Ram Jhula & Laxman Jhula',desc:'Walk the iconic suspension bridges — yoga schools, ashrams and café-lined ghats on both sides',cost:'₹0'},{time:'Afternoon',place:'Beatles Ashram (Chaurasi Kutia)',desc:'Where the Beatles meditated in 1968 — now a magical art-covered jungle ruin',cost:'₹150'},{time:'Evening',place:'Triveni Ghat Aarti',desc:'Grand Ganga aarti ceremony — fire, chanting and flower offerings at dusk',cost:'₹0'},{time:'Night',place:'Little Buddha Café',desc:'Ganga-facing rooftop restaurant — momos, banana lassi and Himalayan green tea',cost:'₹400'}]},
+      2: {title:'Thrills on the Ganga', acts:[{time:'Morning',place:'White Water Rafting, Shivpuri',desc:'16km Grade III-IV rafting down the Ganges — thrilling rapids and stunning gorges',cost:'₹1,200'},{time:'Afternoon',place:'Cliff Jumping & Body Surfing',desc:'Jump from 15-25m cliffs into the crystal Ganga — an absolute adrenaline rush',cost:'₹400'},{time:'Evening',place:'Bungee Jumping, Mohan Chatti',desc:'India\'s highest fixed platform bungee at 83m — not for the faint-hearted',cost:'₹3,500'},{time:'Night',place:'Chotiwala Restaurant',desc:'Famous dhabha-style restaurant since 1958 — rajma chawal and aloo paratha',cost:'₹300'}]},
+      3: {title:'Yoga, Meditation & Temples', acts:[{time:'Morning',place:'Sunrise Yoga at Parmarth Niketan',desc:'Guided asana and pranayama practice on the Ganga banks at dawn',cost:'₹200'},{time:'Afternoon',place:'Neelkanth Mahadev Temple',desc:'Sacred Shiva temple in dense forest 23km from Rishikesh — serene and powerful',cost:'₹0'},{time:'Evening',place:'Vashishtha Cave Meditation',desc:'Ancient cave where sage Vashishtha meditated — try silent sitting inside',cost:'₹0'},{time:'Night',place:'Trayambakam Yoga Café',desc:'Sattvic dinner — khichdi, sabzi, rotis and homemade desserts',cost:'₹350'}]},
+    }
+  },
+  'Udaipur': {
+    hotels: [
+      {name:'Taj Lake Palace', stars:5, price:'₹35,000–₹70,000', area:'Lake Pichola (island hotel)', amenities:'Water-facing suites, pool, fine dining, boat transfers', why:'The most romantic hotel in India — a floating marble palace on the lake'},
+      {name:'Fateh Garh', stars:5, price:'₹12,000–₹22,000', area:'Fateh Sagar Lake', amenities:'Infinity pool, valley views, heritage decor, spa', why:'Hilltop fort hotel with some of Udaipur\'s finest lake views'},
+      {name:'Amet Haveli', stars:4, price:'₹5,000–₹9,000', area:'Lake Pichola Ghats', amenities:'Lakeside location, rooftop restaurant, haveli architecture', why:'250-year-old haveli right on Lake Pichola\'s edge'},
+      {name:'Hotel Jagat Niwas', stars:3, price:'₹2,500–₹5,000', area:'Lal Ghat, City Palace', amenities:'Lake view terrace, heritage rooms, café, tour desk', why:'Best budget lake-view hotel, steps from City Palace'},
+      {name:'Zostel Udaipur', stars:2, price:'₹600–₹1,800', area:'Hanuman Ghat', amenities:'Rooftop, lake views, social lounge, bicycle rental', why:'Fantastic backpacker views of the lake at rock-bottom prices'},
+    ],
+    packages: {
+      Budget: [{name:'Udaipur Dreamer 🏛️', tagline:'City of Lakes without breaking the bank', price:'₹8,000/person', days:'3N/4D', includes:'Budget heritage hotel, breakfast, City Palace, boat ride, Sajjangarh fort', highlights:['Lake Pichola sunset boat','Vintage car museum','Saheliyon ki Bari gardens'], ideal:'Solo travellers & budget honeymooners'}],
+      Comfort: [{name:'Royal Rajasthan ✨', tagline:'Udaipur\'s finest experiences', price:'₹22,000/person', days:'4N/5D', includes:'Heritage haveli, all meals, private boat, cultural dinner, Nathdwara day trip', highlights:['Puppet show dinner cruise','Mewar Sound & Light Show','Shilpgram craft village'], ideal:'Couples & culture enthusiasts'}],
+      Luxury: [{name:'Lake Palace Dreams 👑', tagline:'Live the Maharana fantasy', price:'₹80,000/person', days:'5N/6D', includes:'Taj Lake Palace or Fateh Garh, royal dining, private boat tours, spa, helicopter over Aravalli', highlights:['Private zenana chamber dinner','Elephant polo viewing','Sunrise Udaipur from Monsoon Palace'], ideal:'Honeymooners & luxury experience seekers'}],
+    },
+    itinerary: {
+      1: {title:'City Palace & Lake Pichola', acts:[{time:'Morning',place:'City Palace Museum',desc:'Massive 400-year-old palace complex — crystal gallery, peacock mosaic and panoramic lake views',cost:'₹400'},{time:'Afternoon',place:'Lake Pichola Boat Ride',desc:'Cruise to Jag Mandir island palace and past the floating Taj Lake Palace',cost:'₹700'},{time:'Evening',place:'Jagdish Temple',desc:'17th-century Vishnu temple with Indo-Aryan architecture — always buzzing with devotees',cost:'₹0'},{time:'Night',place:'Ambrai Ghat Restaurant',desc:'Outdoor lakeside dining with City Palace illuminated before you — dal baati churma',cost:'₹1,200'}]},
+      2: {title:'Forts & Hidden Gems', acts:[{time:'Morning',place:'Kumbhalgarh Fort',desc:'Second largest wall in the world after Great Wall — dramatic Aravalli views for miles',cost:'₹200'},{time:'Afternoon',place:'Ranakpur Jain Temples',desc:'Stunning 15th-century marble temples with 1,444 intricately carved columns — an architectural marvel',cost:'₹200'},{time:'Evening',place:'Sajjangarh Monsoon Palace',desc:'Hilltop palace at 944m — built to watch monsoon clouds, now an epic sunset viewpoint',cost:'₹100'},{time:'Night',place:'Jheel\'s Ginger Coffee Bar',desc:'Cozy café with lake view — rajasthani thali, ginger chai and banana pancakes',cost:'₹400'}]},
+      3: {title:'Art, Gardens & Local Life', acts:[{time:'Morning',place:'Saheliyon ki Bari',desc:'18th-century royal garden of the "garden of maidens" with fountains, kiosks and lotus pools',cost:'₹30'},{time:'Afternoon',place:'Shilpgram Craft Village',desc:'Living craft village showcasing artisans of Rajasthan, Gujarat and Goa — shop direct from makers',cost:'₹50'},{time:'Evening',place:'Bagore Ki Haveli',desc:'200-year-old haveli — Rajasthani folk dance and music show at sunset',cost:'₹100'},{time:'Night',place:'1559 AD Restaurant',desc:'Restaurant in a 450-year-old haveli — authentic Mewari cuisine with tabla live music',cost:'₹1,000'}]},
+    }
+  },
+  'default': {
+    hotels: [
+      {name:'Taj Hotel & Convention Centre', stars:5, price:'₹10,000–₹20,000', area:'City Centre', amenities:'Pool, spa, fine dining, business facilities', why:'Guaranteed quality and service across all Taj properties in India'},
+      {name:'ITC Luxury Hotel', stars:5, price:'₹8,000–₹15,000', area:'Prime Location', amenities:'Multiple restaurants, pool, spa, club lounge', why:'Award-winning Indian luxury with exceptional cuisine'},
+      {name:'Radisson Blu', stars:4, price:'₹4,500–₹8,000', area:'Business District', amenities:'Pool, restaurant, free breakfast, gym', why:'Consistent quality 4-star experience across India'},
+      {name:'Lemon Tree Hotel', stars:3, price:'₹2,000–₹4,000', area:'Central Location', amenities:'Restaurant, gym, café, travel desk', why:'Reliable budget-friendly chain with great service'},
+      {name:'OYO Flagship Hotel', stars:2, price:'₹800–₹2,000', area:'City Area', amenities:'AC, WiFi, 24hr reception, basic amenities', why:'Most affordable option with standardized cleanliness'},
+    ],
+    packages: {
+      Budget: [{name:'Explorer Pack 🌍', tagline:'Maximum sights, minimum spend', price:'₹8,000/person', days:'3N/4D', includes:'Budget accommodation, breakfast, local sightseeing, public transport', highlights:['Top local attractions','Street food tour','Cultural experience'], ideal:'Budget-conscious travellers'}],
+      Comfort: [{name:'Discovery Package ✨', tagline:'Comfort and culture combined', price:'₹20,000/person', days:'4N/5D', includes:'3-star hotel, all meals, private guide, key attractions, local excursion', highlights:['Heritage sites','Local cuisine experience','Cultural show'], ideal:'Families and couples'}],
+      Luxury: [{name:'Premium Escape 👑', tagline:'Every comfort, every moment', price:'₹55,000/person', days:'5N/6D', includes:'5-star hotel, fine dining, private car, exclusive experiences', highlights:['VIP access to attractions','Private chef dinner','Luxury transfers'], ideal:'Luxury and business travellers'}],
+    },
+    itinerary: {
+      1: {title:'Arrival & City Highlights', acts:[{time:'Morning',place:'City Centre Exploration',desc:'Arrive, check in and take a gentle orientation walk around the city centre',cost:'₹0'},{time:'Afternoon',place:'Main Attractions Tour',desc:'Visit the top cultural and heritage landmarks of the city',cost:'₹500'},{time:'Evening',place:'Local Market',desc:'Explore the vibrant local market for food, crafts and local flavour',cost:'₹400'},{time:'Night',place:'Signature Local Restaurant',desc:'Dinner featuring the most celebrated local dish at a well-rated restaurant',cost:'₹700'}]},
+      2: {title:'Deep Dive & Hidden Gems', acts:[{time:'Morning',place:'Heritage or Nature Site',desc:'Visit the most iconic landmark or natural attraction in the region',cost:'₹300'},{time:'Afternoon',place:'Local Experience',desc:'Participate in an authentic local cultural or culinary experience',cost:'₹500'},{time:'Evening',place:'Panoramic Viewpoint',desc:'Enjoy sunset views from the best vantage point in the city',cost:'₹0'},{time:'Night',place:'Recommended Evening Dining',desc:'Dinner at a local favourite known for authentic regional flavours',cost:'₹600'}]},
+      3: {title:'Adventure & Farewell', acts:[{time:'Morning',place:'Day Excursion',desc:'Explore a nearby natural or historical site outside the city',cost:'₹800'},{time:'Afternoon',place:'Shopping & Souvenirs',desc:'Pick up local handicrafts, foods and gifts to take home',cost:'₹500'},{time:'Evening',place:'Final Sightseeing',desc:'Any missed attractions and a final city panorama before departure',cost:'₹200'},{time:'Night',place:'Farewell Dinner',desc:'A memorable final meal sampling the full range of local cuisine',cost:'₹800'}]},
+    }
+  }
+};
+
+// Local AI engine — generates rich content from destination data
+function localAI_itinerary(dest, days, budget, interests) {
+  const d = dest.trim().toLowerCase();
+  const month = new Date().toLocaleString('default',{month:'long'});
+
+  // ── HYPER-DETAILED CITY ITINERARIES ─────────────────────
+  const RICH_ITINERARIES = {
+
+    'hyderabad': {
+      weather: { 'January':'Pleasant 15–28°C, perfect for sightseeing. Light jacket for evenings.', 'February':'Warm 18–30°C, ideal for outdoor visits. Sunscreen recommended.', 'March':'Hot 22–35°C, start early mornings. Stay hydrated.', 'April':'Very hot 26–40°C, visit monuments by 8am or after 5pm.', 'May':'Peak heat 28–42°C, afternoon indoors is wise. Evenings at tank bund.', 'June':'Monsoon begins, 24–35°C, lush green Golconda looks magical.', 'July':'Heavy rains 22–32°C, Hussain Sagar beautiful but outdoor caution.', 'August':'Monsoon 22–32°C, Birla Mandir and indoor Pearl Market ideal.', 'September':'Receding rains, 24–33°C, great for Charminar photography.', 'October':'Excellent 22–32°C, best weather for all attractions. Book early.', 'November':'Perfect 18–28°C, ideal for Golconda Fort sound & light show.', 'December':'Cool 14–26°C, best month. Mornings at Qutb Shahi Tombs magical.' },
+      days: [
+        { title:'Old City — Pearls, Biryani & Charminar',
+          acts:[
+            {time:'Morning',place:'Charminar',desc:'Arrive by 8am before crowds. Climb all 4 minarets for panoramic Old City views. Photography is best in soft morning light. Entry ₹25 Indians.',cost:'₹25'},
+            {time:'Morning',place:'Laad Bazaar (Choodi Bazaar)',desc:'The 500-year-old bangle market right beside Charminar. Thousands of lac bangles, pearl jewellery and Hyderabadi perfumes. Must-buy: glass bangles & attar perfumes.',cost:'₹300–₹1,500'},
+            {time:'Afternoon',place:'Chowmahalla Palace',desc:'The breathtaking palace of Nizams — 5 palaces, vintage Rolls Royces, royal durbar hall. Open 10am–5pm (closed Fridays). One of Hyderabad\'s most underrated gems.',cost:'₹80'},
+            {time:'Afternoon',place:'Shadab Hotel for Biryani',desc:'The most iconic Hyderabadi Dum Biryani restaurant since 1953. Order the Mutton Dum Biryani (₹250) with mirchi ka salan. Arrive by 1pm — queues form fast.',cost:'₹300'},
+            {time:'Evening',place:'Mecca Masjid',desc:'One of India\'s largest mosques — capacity 10,000 worshippers. Granite from a single rock, built over 77 years by 5 Mughal emperors. Respectful dress required.',cost:'₹0'},
+            {time:'Night',place:'Hotel Nayab / Pista House',desc:'End the evening with double ka meetha (bread pudding), Irani chai and Osmania biscuits at the famous Pista House. Hyderabad\'s quintessential evening experience.',cost:'₹150'}
+          ]
+        },
+        { title:'Forts, Tombs & the City of Pearls',
+          acts:[
+            {time:'Morning',place:'Golconda Fort',desc:'Start at 8am before the heat. This 400-acre fort has 87 bastions and an acoustic clapping system at the entrance that was heard 1km away. Explore the durbar hall, mortuary bath and Taramati mosque. Wear comfortable shoes.',cost:'₹40'},
+            {time:'Morning',place:'Qutb Shahi Tombs',desc:'Just 1km from Golconda — 7 domed tombs of the Qutb Shahi dynasty set in a manicured Persian garden. Hauntingly beautiful, especially in morning mist. UNESCO tentative list.',cost:'₹25'},
+            {time:'Afternoon',place:'Mangatrai Pearls, Begum Bazaar',desc:'Hyderabad is the pearl capital of India. Visit Mangatrai or Krishnapearls — certified stores with cultured, Basra and freshwater pearls. Bargaining is expected. Authenticity certificates provided.',cost:'₹500–₹5,000'},
+            {time:'Afternoon',place:'Café Bahar',desc:'Legendary Hyderabadi restaurant since 1972. Order haleem, sheer korma and the famous Hyderabadi khubani ka meetha (apricot dessert). Frequented by politicians and film stars.',cost:'₹350'},
+            {time:'Evening',place:'Golconda Fort Sound & Light Show',desc:'7pm (English), 8pm (Telugu/Hindi). Amitabh Bachchan narrates the history of Golconda. The fort is lit spectacularly. Book tickets online in advance, especially weekends.',cost:'₹130'},
+            {time:'Night',place:'Banjara Hills Restaurant Row',desc:'After the show, head to Road No.2 Banjara Hills for dessert and nightcaps. Try Cream Stone ice cream — Hyderabad\'s cult ice cream brand with 100+ flavours.',cost:'₹200'}
+          ]
+        },
+        { title:'Modern Hyderabad — Tech, Art & Hussain Sagar',
+          acts:[
+            {time:'Morning',place:'Birla Mandir',desc:'Gleaming white marble temple built from 2,000 tonnes of Rajasthani marble on a 120ft hilltop. Stunning 360° views of Hussain Sagar lake and city. Best visited at sunrise (7am). No photography inside.',cost:'₹0'},
+            {time:'Morning',place:'Hussain Sagar Lake & Tank Bund',desc:'The 16km² lake built by Ibrahim Quli Qutb Shah in 1563. Walk along Tank Bund lined with 33 bronze statues of Telangana heroes. Take the TSLMDC boat to the 18m Buddha statue on Rock of Gibraltar island.',cost:'₹80'},
+            {time:'Afternoon',place:'Salar Jung Museum',desc:'Third-largest museum in India — 43,000+ artefacts including the famous Veiled Rebecca marble sculpture and a musical clock. Allow 3 hours minimum. Closed Fridays.',cost:'₹50'},
+            {time:'Afternoon',place:'Hotel Bawarchi, RTC X Roads',desc:'The most beloved biryani after Shadab. The original Hyderabadi-style with saffron and whole spices. Order the full leg piece biryani. Cash only. Always crowded — that\'s the sign of quality.',cost:'₹280'},
+            {time:'Evening',place:'Shilparamam Crafts Village',desc:'A 65-acre living craft village with artisans from across Andhra & Telangana making ikat fabrics, Bidriware, Kondapalli toys and Nirmal paintings. Great for authentic souvenirs.',cost:'₹40'},
+            {time:'Night',place:'HICC / Novotel Food Street',desc:'Hyderabad International Convention Centre area has multiple restaurants. Try Paradise Biryani (the chain that made Hyderabadi biryani world-famous) for your final night feast.',cost:'₹400'}
+          ]
+        },
+        { title:'Hidden Gems & Culinary Trails',
+          acts:[
+            {time:'Morning',place:'Paigah Tombs, Santoshnagar',desc:'Hyderabad\'s most undervisited gem — intricately carved marble tombs of the Paigah nobility with Indo-Islamic and European fusion style. Almost no tourists. Built 1787–1880.',cost:'₹0'},
+            {time:'Morning',place:'Irani Chai at Nimrah Café',desc:'The iconic café beside Charminar since 1993. Hyderabad\'s legendary Irani chai (thick, creamy, tea brewed with condensed milk) with Osmania biscuits. A non-negotiable Hyderabad ritual.',cost:'₹30'},
+            {time:'Afternoon',place:'Ramoji Film City',desc:'World\'s largest film studio complex (Guinness World Record) — 2,000 acres with 47 permanent outdoor sets, rides, shows and guided tours. Book in advance. Half-day minimum.',cost:'₹1,350'},
+            {time:'Afternoon',place:'KBR National Park',desc:'2,000-acre green lung in the heart of Hyderabad. Walking and jogging trails with 600+ species of plants, deer, jackals and 140 bird species. Best in early mornings.',cost:'₹25'},
+            {time:'Evening',place:'Necklace Road Sunset',desc:'The 3.5km stretch along Hussain Sagar is Hyderabad\'s favourite evening promenade. Street food stalls, giant Hanuman statue, paddle boats and the city skyline reflecting in the water.',cost:'₹0'},
+            {time:'Night',place:'Ohris Banjara or Fusion 9',desc:'Hyderabad\'s upscale dining scene along Jubilee Hills. Try the Nawabi Gosht or prawn gassi. End with double ka meetha and Irani chai for a perfect Hyderabadi send-off.',cost:'₹800'}
+          ]
+        }
+      ]
+    },
+
+    'goa': {
+      weather: { 'January':'Peak season 24–32°C. Beaches perfect. Book everything in advance.', 'February':'Perfect 24–32°C, carnival month. Less crowded than January.', 'March':'Hot 26–35°C. Last beach month before heat. Water sports all open.', 'April':'Very hot, 28–36°C. South Goa quieter, North beaches still active.', 'May':'Pre-monsoon 28–36°C. Great deals, 50% less tourists.', 'June':'Monsoon arrives. 24–30°C, wild seas, lush green. No beach swimming.', 'July':'Heavy monsoon 22–28°C. Best for waterfalls and spice farms.', 'August':'Monsoon 22–28°C, Dudhsagar falls at peak flow. Stunning.', 'September':'Late monsoon 24–30°C, beaches clearing, great value.', 'October':'Post-monsoon 26–33°C, markets reopening, shoulder season.', 'November':'Great 24–32°C, beaches busy again. International Film Festival.', 'December':'Peak 22–30°C. Christmas & NYE. Book 3–6 months ahead.' },
+      days: [
+        { title:'North Goa — Beaches, Forts & Sunset Vibes',
+          acts:[
+            {time:'Morning',place:'Calangute & Baga Beach',desc:'Start at Calangute — Goa\'s largest beach. Swim, jet ski or parasail. Then walk north to Baga — water sports capital with banana boat rides (₹500). Best before 11am before heat.',cost:'₹0–₹500'},
+            {time:'Afternoon',place:'Anjuna Flea Market (Wednesdays)',desc:'If it\'s Wednesday, this is mandatory. 200+ stalls of Kashmiri crafts, Tibetan jewellery, hippie clothes and spices. Great for unique souvenirs. Bargain hard — start at 40% of asking price.',cost:'₹500–₹2,000'},
+            {time:'Afternoon',place:'Thalassa Greek Taverna, Vagator',desc:'Cliffside restaurant with stunning Ozran Beach views. Best Greek food in Goa — try the mezze platter and fresh catch of the day. Sunset here is spectacular.',cost:'₹800'},
+            {time:'Evening',place:'Aguada Fort & Lighthouse',desc:'17th-century Portuguese fort on a rocky promontory. The lighthouse is one of Asia\'s oldest. Sunset views over the Arabian Sea are extraordinary. Free entry after 5pm.',cost:'₹0'},
+            {time:'Night',place:'Club Cubana, Arpora',desc:'The nightclub in the sky — built into a hillside with 3 pools, 7 bars and city views. Opens 9:30pm. Cover ₹1,500 includes drinks.',cost:'₹1,500'}
+          ]
+        },
+        { title:'South Goa — Pristine Beaches & Heritage',
+          acts:[
+            {time:'Morning',place:'Palolem Beach',desc:'Goa\'s most beautiful beach — crescent-shaped bay with calm waters, lined with swaying palms. Rent a kayak (₹300/hr) or just swim. Arrive by 8am for silence and perfect light.',cost:'₹0'},
+            {time:'Afternoon',place:'Cabo de Rama Fort',desc:'Ancient fort with origins in Hindu mythology, taken by Portuguese in 1763. Dramatic clifftop location with 180° sea views. Almost no tourists. Hauntingly beautiful.',cost:'₹0'},
+            {time:'Afternoon',place:'Martin\'s Corner, Betalbatim',desc:'Goa\'s most celebrated seafood restaurant since 1981. Must-try: crab xec-xec, prawn balchão, sol kadhi and Goan fish curry with rice. Book a table in advance.',cost:'₹1,200'},
+            {time:'Evening',place:'Colva Beach Sunset',desc:'South Goa\'s most popular beach — pristine, wide and far less crowded than the north. The Sunday market (if weekend) has local produce and crafts.',cost:'₹0'},
+            {time:'Night',place:'Old Quarter, Panaji',desc:'Walk the Latin Quarter (Fontainhas) at night — heritage houses in Portuguese yellow and ochre, lit beautifully. End at the Panjim Inn courtyard bar for feni cocktails.',cost:'₹300'}
+          ]
+        },
+        { title:'Spice Country, Waterfalls & Old Goa',
+          acts:[
+            {time:'Morning',place:'Dudhsagar Waterfalls',desc:'India\'s 5th tallest waterfall (310m) on the Goa-Karnataka border. Best Jul–Oct when in full flow. Take the Jeep safari from Mollem (₹400) — swimming in the pool below is allowed.',cost:'₹400'},
+            {time:'Afternoon',place:'Sahakari Spice Farm, Ponda',desc:'A working organic spice plantation — guided tour through vanilla, cardamom, nutmeg, cocoa and pepper. Traditional Goan lunch included (₹400). Crocodile and kingfisher sightings on the river.',cost:'₹400'},
+            {time:'Afternoon',place:'Se Cathedral & Basilica of Bom Jesus',desc:'Se Cathedral is Asia\'s largest church (1619). Adjacent Basilica holds the relics of St. Francis Xavier — a UNESCO World Heritage Site. The Baroque architecture is stunning.',cost:'₹0'},
+            {time:'Evening',place:'Goa State Museum, Panaji',desc:'Fascinating collection of Portuguese-era furniture, Goan Christian art, Hindu bronzes and freedom movement memorabilia. Free entry after 5pm.',cost:'₹0'},
+            {time:'Night',place:'Fisherman\'s Wharf, Calapor',desc:'Voted Goa\'s best waterfront restaurant — traditional Goan décor, live music on weekends, lobster thermidor and a spectacular river view. Sunset dinner here is unforgettable.',cost:'₹1,500'}
+          ]
+        }
+      ]
+    },
+
+    'jaipur': {
+      weather: { 'January':'Cool 8–22°C. Best month. Carry a jacket for mornings and nights.', 'February':'Pleasant 12–25°C. Elephant Festival in Feb. Book early.', 'March':'Warm 18–32°C. Good for sightseeing. Holi in March is spectacular.', 'April':'Hot 24–38°C. Early morning fort visits only.', 'May':'Very hot 28–43°C. Avoid midday outdoors entirely.', 'June':'Monsoon starts 26–38°C. Jaigarh Fort views dramatic with clouds.', 'July':'Monsoon 24–35°C. Palaces look beautiful in the rain.', 'August':'Monsoon 24–33°C. Jantar Mantar and palace museums ideal.', 'September':'Post-monsoon 24–35°C. Green Aravallis backdrop to forts.', 'October':'Excellent 18–32°C. Diwali illuminations in Oct/Nov are magical.', 'November':'Perfect 12–26°C. Literature Festival in Jan. Great sightseeing.', 'December':'Cold 7–22°C. Best photography. Blankets at night.' },
+      days: [
+        { title:'Fort Royale — Amber, Jaigarh & Nahargarh',
+          acts:[
+            {time:'Morning',place:'Amber Fort (Amer Fort)',desc:'Arrive by 8am to beat crowds and heat. Book e-tickets online (₹200). The Sheesh Mahal (Mirror Palace) ceiling has 1,000 mirrors — one candle illuminates the whole room. Elephant ride ₹900/couple (8–11am only).',cost:'₹200'},
+            {time:'Morning',place:'Jaigarh Fort',desc:'10-minute drive from Amber. Houses Jai Vana — Asia\'s largest wheeled cannon (50 tonnes). Underground treasury, armoury and stunning valley views. Combination ticket with Amber available.',cost:'₹85'},
+            {time:'Afternoon',place:'LMB (Laxmi Misthan Bhandar)',desc:'Jaipur\'s most iconic sweet shop and restaurant since 1954. Must-try: dal baati churma, pyaaz kachori and ghewar. Politicians, celebrities and locals all eat here. A Jaipur institution.',cost:'₹350'},
+            {time:'Evening',place:'Nahargarh Fort',desc:'The "Tiger Fort" — perched 600ft on the Aravalli. Best sunset in Jaipur, bar none. The fort\'s rooftop Padao restaurant serves Rajasthani thali with this view (₹400). Visit the Sheesh Mahal inside.',cost:'₹50'},
+            {time:'Night',place:'Chokhi Dhani Village Resort',desc:'20km from city — the ultimate Rajasthani cultural village. Camel rides, puppet shows, folk dances, traditional tattoos and an incredible Rajasthani thali on banana leaves sitting cross-legged. 6pm–midnight.',cost:'₹900'}
+          ]
+        },
+        { title:'Pink City Heritage — Palaces, Bazaars & Astronomy',
+          acts:[
+            {time:'Morning',place:'City Palace & Museum',desc:'The Maharaja of Jaipur still lives here — you\'ll see his private apartments. The crystal gallery and textile museum are world-class. The Crystal Gallery alone has pieces worth ₹2,700 crore.',cost:'₹500'},
+            {time:'Morning',place:'Jantar Mantar Observatory',desc:'UNESCO World Heritage Site. 19 astronomical instruments built 1727–1734 — the Samrat Yantra is the world\'s largest sundial (27m high, accurate to 2 seconds). Get a guide (₹200) to understand the instruments.',cost:'₹200'},
+            {time:'Afternoon',place:'Hawa Mahal',desc:'953 latticed windows built so royal ladies could observe street festivals unseen. Best photographed from the café/building opposite on the main road. Sunrise photography here is magical.',cost:'₹50'},
+            {time:'Afternoon',place:'Johari Bazaar & Bapu Bazaar',desc:'The jewellery and gem bazaars of Jaipur — world\'s gem-cutting capital. Buy: kundan jewellery, meenakari enamelwork, blue pottery, block-printed fabrics and mojri shoes. Bargain at 50% off asking.',cost:'₹500–₹3,000'},
+            {time:'Evening',place:'Jal Mahal (Water Palace)',desc:'The 8-storey palace appears to float in Man Sagar Lake at sunset — 4 storeys are submerged. You can\'t enter, but the lakeside view is one of Jaipur\'s most photographed. Best at golden hour.',cost:'₹0'},
+            {time:'Night',place:'Suvarna Mahal, Rambagh Palace',desc:'Dinner at Jaipur\'s most iconic heritage hotel (1835, former royal hunting lodge). The restaurant has 12ft chandeliers, Mughal pillars and live sitar. Book the Rajasthani Thali (₹3,500).',cost:'₹3,500'}
+          ]
+        }
+      ]
+    },
+
+    'mumbai': {
+      weather: { 'January':'Perfect 15–30°C. Clear skies, cool sea breeze. Best month.', 'February':'Lovely 17–30°C. Kala Ghoda Arts Festival. Great for sightseeing.', 'March':'Warm 20–33°C. Holi festival — colourful street celebrations.', 'April':'Hot 24–36°C. Marine Drive evenings are breezy and pleasant.', 'May':'Very hot 26–38°C. Monsoon approaching. Off-season deals.', 'June':'Monsoon arrives 24–33°C. Mumbai transforms. Rains very heavy.', 'July':'Peak monsoon 23–30°C. Marine Drive waves spectacular (not safe).', 'August':'Monsoon 23–30°C. Ganesh Chaturthi in Aug/Sep — unmissable.', 'September':'Receding monsoon 24–33°C. Ganesh visarjan processions.', 'October':'Excellent 24–33°C. Navratri and Diwali. City illuminated.', 'November':'Great 22–32°C. Mumbai Marathon season. Pleasant for walking.', 'December':'Best 17–30°C. New Year parties. Book months in advance.' },
+      days: [
+        { title:'Colonial Mumbai — Gateway, Victoria & Marine Drive',
+          acts:[
+            {time:'Morning',place:'Gateway of India & Harbour',desc:'The iconic 1924 Indo-Saracenic arch where the last British troops departed India in 1948. Morning light is perfect for photography. Take the ferry to Elephanta Caves from the jetty (₹200, 1hr each way).',cost:'₹0'},
+            {time:'Morning',place:'Elephanta Caves, Gharapuri Island',desc:'UNESCO World Heritage caves with 6th–8th century rock-cut Shaivite sculptures. The 6m trimurti of Shiva is among India\'s greatest sculptures. UNESCO protected. Ferry included ₹200 + ₹600 entry.',cost:'₹800'},
+            {time:'Afternoon',place:'Leopold Café, Colaba',desc:'The city\'s most famous café since 1871 — featured in Shantaram. Still has bullet holes from 26/11. Try the prawn koliwada, chicken tikka sandwich and cold coffee. A Mumbai pilgrimage.',cost:'₹400'},
+            {time:'Afternoon',place:'Colaba Causeway Market',desc:'Mumbai\'s most vibrant street market — antiques, Bollywood memorabilia, silver jewellery, leather goods and brass items. Best buys: Art Deco prints, Bengali brass lamps. Start at 30% of asking price.',cost:'₹500–₹2,000'},
+            {time:'Evening',place:'Marine Drive (Queen\'s Necklace)',desc:'The 3.6km promenade along the Arabian Sea. At sunset the whole arc of Art Deco buildings glows orange. Buy roasted peanuts and bhutta (corn) from vendors. Churumuri (puffed rice) is mandatory.',cost:'₹50'},
+            {time:'Night',place:'Trishna Restaurant, Fort',desc:'Mumbai\'s most celebrated seafood restaurant since 1981. The butter-garlic crab is the city\'s single most-discussed dish. Book 2 weeks in advance for weekends. Prawn koliwada is legendary.',cost:'₹2,000'}
+          ]
+        },
+        { title:'Bollywood, Dharavi & Street Food Capital',
+          acts:[
+            {time:'Morning',place:'Dharavi Slum Tour (Reality Tours)',desc:'The world\'s most productive slum — ₹800 crore turnover. Walk through the leather district, pottery colony, recycling units and embroidery shops. Reality Tours is ethical, community-run. Transforms perceptions entirely.',cost:'₹600'},
+            {time:'Afternoon',place:'Dabbawala Lunch System',desc:'Watch Mumbai\'s legendary 130-year-old tiffin delivery system at Churchgate or Victoria Terminus. 5,000 dabbawalas, 200,000 lunches daily, 1 error in 6 million deliveries. A Six Sigma Harvard case study.',cost:'₹0'},
+            {time:'Afternoon',place:'Bhuleshwar & Crawford Market',desc:'Crawford Market (1869) was designed by Lockwood Kipling (Rudyard\'s father). Fresh fruit, meat, pets and spices under a Gothic-Flemish roof. Adjacent Bhuleshwar has Mumbai\'s best street food cluster.',cost:'₹300'},
+            {time:'Evening',place:'Film City, Goregaon',desc:'Where 80% of Indian TV shows are filmed — you\'ll likely see a shoot in progress. Book through their website for guided studio tours. Massive outdoor sets (Mughal era, modern city, village) are fascinating.',cost:'₹500'},
+            {time:'Night',place:'Juhu Beach & Chaat Street',desc:'Mumbai\'s most famous beach food strip. Try: pav bhaji (butter-drenched), bhel puri, vada pav (Mumbai\'s soul food), sev puri. Juhu is where Bollywood stars live — spot them at Prithvi Theatre nearby.',cost:'₹300'}
+          ]
+        }
+      ]
+    },
+
+    'varanasi': {
+      weather: { 'January':'Cold 6–18°C. Misty Ganga mornings are ethereal. Blankets essential.', 'February':'Cool 10–22°C. Great for Ganga aarti. Shivaratri in Feb/March.', 'March':'Pleasant 15–30°C. Holi celebrations here are legendary — 5 days of colour.', 'April':'Hot 22–38°C. Early morning ghats before 7am.', 'May':'Very hot 28–44°C. Indoor temples and evening ghats only.', 'June':'Monsoon begins 26–38°C. Ganga flooding is dramatic.', 'July':'Heavy rain 25–33°C. Ghats partially submerged. Surreal scenery.', 'August':'Monsoon 24–32°C. Very atmospheric — Ganga high and fast.', 'September':'Post-monsoon 24–34°C. Ganga levels drop. Ghats accessible again.', 'October':'Good 18–30°C. Diwali on the ghats is the most spectacular in India.', 'November':'Excellent 12–25°C. Dev Deepawali — 1 million lamps on the Ganga.', 'December':'Cold 8–20°C. Morning mist on the Ganga is incredibly photogenic.' },
+      days: [
+        { title:'Dawn on the Ganga — Aarti, Boats & Ancient Ghats',
+          acts:[
+            {time:'Morning',place:'Sunrise Boat Ride on the Ganga',desc:'Board a wooden rowing boat at Dashashwamedh Ghat at 5:30am. Watch the sun rise over 84 ghats as priests perform morning rituals. The most transcendental hour in India. Negotiate ₹300–₹500 for 1hr.',cost:'₹400'},
+            {time:'Morning',place:'Manikarnika Ghat — The Burning Ghat',desc:'The most sacred cremation site in Hinduism — fires have burned for 3,000 years continuously. Observe respectfully and silently from a distance. Photography strictly prohibited. A profoundly moving human experience.',cost:'₹0'},
+            {time:'Afternoon',place:'Kashi Vishwanath Temple',desc:'One of the 12 Jyotirlinga shrines — Shiva\'s most sacred abode. The new corridor (2021) makes it accessible for all. Gold-plated shikhara donated by Maharaja Ranjit Singh. Arrive before noon to avoid queues.',cost:'₹0'},
+            {time:'Afternoon',place:'Blue Lassi Shop, Kachori Gali',desc:'The legendary Blue Lassi Shop (Est. 1920s) on Vishwanath Gali. 75+ varieties of lassi including mango, rose, papaya and the signature Blue Lassi (butterfly pea flower). Kachori Gali\'s street kachoris are legendary.',cost:'₹100'},
+            {time:'Evening',place:'Dashashwamedh Ghat Aarti',desc:'7pm — 7 priests simultaneously perform the Ganga Aarti with fire, incense and chants. 10,000 people watch from the ghats and boats. Book a boat in advance for the best view. One of India\'s greatest spectacles.',cost:'₹0'},
+            {time:'Night',place:'Assi Ghat Evening',desc:'The bohemian ghat — evening music, yoga, evening aarti at 7:30pm and café culture. Aatman Café has Ganga views and excellent thalis. The ghat has a gentle, intellectual atmosphere vs Dashashwamedh\'s grandeur.',cost:'₹300'}
+          ]
+        }
+      ]
+    },
+
+    'ladakh': {
+      weather: { 'January':'Frozen −15 to −2°C. Roads closed. Chadar Trek (frozen Zanskar river) — extraordinary.', 'February':'Very cold −10 to 5°C. Chadar Trek and Losar (Ladakhi New Year) festival.', 'March':'Cold −5 to 10°C. Roads still closed. Snow-covered monastery visits.', 'April':'Mild −2 to 15°C. Roads opening. Wildflowers starting.', 'May':'Cool 5 to 22°C. Roads open. Pangong accessible. Book hotels now.', 'June':'Excellent 8 to 25°C. Best month. All roads open. Festivals starting.', 'July':'Peak 12 to 28°C. Hemis Festival — largest in Ladakh. Book 6 months ahead.', 'August':'Perfect 12 to 28°C. Clearest skies. Ladakh Festival. Peak tourist season.', 'September':'Excellent 8 to 22°C. Crowds reduce. Nubra Valley apricot harvest.', 'October':'Cool 0 to 15°C. Last month before closures. Stunning autumn colours.', 'November':'Cold −8 to 5°C. Roads closing. Very few tourists. Stark beauty.', 'December':'Very cold −15 to −2°C. Most roads closed. Only Leh accessible.' },
+      days: [
+        { title:'Leh Acclimatisation — Go Slow, See Far',
+          acts:[
+            {time:'Morning',place:'Leh Palace & Namgyal Tsemo Gompa',desc:'Rest your first day — altitude sickness (3,524m) is real. Gentle walk to the 400-year-old 9-storey royal palace. The hilltop Namgyal Tsemo monastery has a 7.5m Maitreya Buddha. Views over the entire Indus Valley.',cost:'₹50'},
+            {time:'Afternoon',place:'Shanti Stupa, Changspa',desc:'The Japanese-built white dome on a 4,267m hilltop. 500 steps up (or taxi). The 360° panorama of the Stok Kangri range, Zanskar mountains and Leh town is Ladakh\'s finest viewpoint. Best in late afternoon light.',cost:'₹0'},
+            {time:'Afternoon',place:'Tibetan Kitchen, Leh Market',desc:'Leh\'s most authentic Tibetan restaurant. Order thukpa (noodle soup — the best altitude medicine), steamed momos with chilli sauce and Ladakhi butter tea (gur gur chai). Sit by the window for mountain views.',cost:'₹350'},
+            {time:'Evening',place:'Leh Main Market',desc:'Browse pashmina shawls (₹2,500 for real pashmina), Tibetan prayer wheels, turquoise and coral jewellery and dried Ladakhi apricots (world\'s best). The market is closed by 8pm — shop before sunset.',cost:'₹500–₹3,000'},
+            {time:'Night',place:'La Pizzeria, Changspa',desc:'Leh\'s most beloved café — Belgian owner, wood-fired pizza, pasta, warm fireplace. The terrace has mountain views. Altitude means alcohol hits harder — drink very moderately your first 2 nights.',cost:'₹400'}
+          ]
+        },
+        { title:'Pangong Tso — The Blue Lake of Heaven',
+          acts:[
+            {time:'Morning',place:'Khardung La Pass (5,359m)',desc:'Drive through what was the world\'s highest motorable road. Military checkpoint — carry ID. The pass has permanent snow even in July. The views of the Karakoram and Zanskar ranges are otherworldly. Take photos, don\'t linger at altitude.',cost:'₹0'},
+            {time:'Afternoon',place:'Pangong Tso Lake',desc:'The 134km lake (only 40km in India, rest in Tibet) shifts through 5 shades of blue and green hourly depending on light. The 3 Idiots filming location. Wade in — the water is pure glacier melt, ice cold and crystal clear.',cost:'₹0'},
+            {time:'Evening',place:'Pangong Sunset — Spangmik Village',desc:'The most spectacular sunset in Ladakh — the lake turns gold, crimson and violet. Tibetan nomads (Changpa people) with yak herds in the foreground. The absolute highlight of any Ladakh trip.',cost:'₹0'},
+            {time:'Night',place:'Pangong Eco Camp',desc:'Sleep in a luxury tent 50m from the lake shore at 4,350m altitude. Bonfire dinner of thukpa and Ladakhi bread. The night sky has 0 light pollution — the Milky Way is a solid arc across the sky.',cost:'₹3,500'}
+          ]
+        }
+      ]
+    },
+
+    'kerala': {
+      weather: { 'January':'Perfect 23–32°C. Peak season. Backwaters ideal, Munnar misty.', 'February':'Excellent 24–33°C. Less crowded than Jan. Backwaters beautiful.', 'March':'Hot 26–35°C. Last beach month. Great for Theyyam dances.', 'April':'Very hot 28–36°C. Vishu (Kerala New Year). Thrissur Pooram in April/May.', 'May':'Pre-monsoon 28–36°C. Thrissur Pooram — India\'s biggest temple festival.', 'June':'Southwest monsoon 23–29°C. Lush green. Backwater canals swell.', 'July':'Heavy monsoon 22–28°C. Ayurveda season. Nehru Trophy Boat Race prep.', 'August':'Monsoon 22–28°C. Nehru Trophy Boat Race (2nd Sat). Onam preparations.', 'September':'Onam (harvest festival) 23–30°C. Biggest Kerala celebration.', 'October':'Post-monsoon 25–33°C. Beaches reopening. Great for all activities.', 'November':'Excellent 24–32°C. North-east monsoon in north Kerala.', 'December':'Good 22–32°C. Christmas celebrated grandly in Christian Kerala.' },
+      days: [
+        { title:'Alleppey Backwaters — God\'s Own Waterways',
+          acts:[
+            {time:'Morning',place:'Alleppey Houseboat Check-in',desc:'Board your kettuvallam (rice boat converted to houseboat) by 10am. Your personal cook prepares fresh Kerala fish curry, karimeen fry and appam breakfast as you drift through emerald canals lined with coconut palms.',cost:'₹8,000–₹15,000/night'},
+            {time:'Afternoon',place:'Vembanad Lake & Village Canals',desc:'Cruise through narrow village canals where children wave from the banks, women wash sarees in the water and toddy tappers climb coconut palms. See the Chinese fishing nets (cheena vala) in action. Surreal, timeless.',cost:'Included'},
+            {time:'Evening',place:'Kumarakom Bird Sanctuary',desc:'Over 100 species of resident and migratory birds — Siberian storks, egrets, herons, kingfishers and cormorants — all around your boat. Dawn and dusk are the prime birding hours. Binoculars recommended.',cost:'₹0'},
+            {time:'Night',place:'Houseboat Dinner Under Stars',desc:'Your cook serves a full Kerala sadya on banana leaves — 12+ dishes including avial, thoran, sambar, payasam and freshly caught pearl spot fish (karimeen). Anchor in the middle of the lake. Absolute silence.',cost:'Included'}
+          ]
+        },
+        { title:'Munnar — Tea Gardens at 1,600m',
+          acts:[
+            {time:'Morning',place:'Kolukkumalai Tea Estate',desc:'World\'s highest organic tea estate (2,100m). The sunrise trek up through mist and tea gardens is one of Kerala\'s great experiences. The 100-year-old factory still uses original British-era machinery. Tea tasting included.',cost:'₹300'},
+            {time:'Afternoon',place:'Eravikulam National Park',desc:'Home of the endangered Nilgiri Tahr — 900 of them. The park has one of South India\'s highest peaks (Anamudi, 2,695m). Neelakurinji flowers bloom every 12 years (next 2030) turning hills blue. Entry 9am–3pm.',cost:'₹125'},
+            {time:'Evening',place:'Top Station Viewpoint',desc:'The highest point in Munnar (1,700m) with panoramic views into Tamil Nadu\'s Theni valley. On clear days, 5 mountain ranges are visible. The drive up via hairpin bends is as dramatic as the destination.',cost:'₹0'},
+            {time:'Night',place:'Rapsy Restaurant, Munnar',desc:'The best Kerala meals restaurant in Munnar — appam with stew, puttu with kadala curry and a spectacular fish molly (coconut milk curry). The banana leaf meals are extraordinary value at ₹150.',cost:'₹150'}
+          ]
+        }
+      ]
+    },
+
+    'manali': {
+      weather: { 'January':'Very cold −15 to 5°C. Solang Valley skiing. Heavy snow. Stunning.', 'February':'Cold −10 to 8°C. Snow-covered Hadimba temple is magical. Ski season peak.', 'March':'Cold 0 to 15°C. Snow melting, rivers rising. Last ski month.', 'April':'Cool 8 to 20°C. Apple and cherry blossoms. Roads to Rohtang open.', 'May':'Pleasant 12 to 25°C. Rohtang Pass open. Trekking starts. Very crowded.', 'June':'Mild 15 to 28°C. Beas rafting at peak. Spiti road opens.', 'July':'Monsoon 16 to 28°C. Landslide risk on Rohtang. Kullu Valley green.', 'August':'Monsoon 15 to 27°C. Kullu Dussehra preparations. Trout fishing season.', 'September':'Post-monsoon 12 to 25°C. Clearest skies. Best photography.', 'October':'Cool 5 to 18°C. Kullu Dussehra festival — 7 days. Spectacular.', 'November':'Cold −2 to 12°C. Snow on peaks. Most tourists gone. Tranquil.', 'December':'Very cold −10 to 2°C. Snow arrives. Winter sports beginning.' },
+      days: [
+        { title:'Valley Soul — Hadimba, Old Manali & Beas',
+          acts:[
+            {time:'Morning',place:'Hadimba Devi Temple',desc:'A 1553 wooden pagoda temple dedicated to Bhima\'s wife from Mahabharata, set in a cedar forest. The carved wooden doorway is a masterpiece. The forest behind is quiet and fragrant — a 20-minute walk for solitude.',cost:'₹0'},
+            {time:'Afternoon',place:'Old Manali Village',desc:'Cross the wooden bridge over the Manalsu nala. Narrow lanes, apple orchards, Tibetan refugees selling momos, Israelis listening to trance, dogs sleeping in the sun. The antithesis of New Manali\'s chaos.',cost:'₹0'},
+            {time:'Afternoon',place:'Dylan\'s Toasted & Roasted Café, Old Manali',desc:'Manali\'s cult café — fresh apple cider, incredible banana bread, Tibetan thukpa and the best coffee in the mountains. The rooftop has views of the Beas river valley. A magnet for travellers since the 1990s.',cost:'₹250'},
+            {time:'Evening',place:'Beas River Sunset, Club House',desc:'The river at its widest near Club House — turquoise glacial water, deodar cedars and the Rohtang glacier visible upstream. Rent a mountain bike (₹100/hr) and cycle along the river bank.',cost:'₹0'},
+            {time:'Night',place:'Johnson\'s Café, Circuit House Road',desc:'Manali\'s finest restaurant since 1990. The trout here is reared in the property\'s own fish farm — pan-fried with garlic butter (₹450). The apple crumble is legendary. Garden seating with mountain views.',cost:'₹600'}
+          ]
+        }
+      ]
+    },
+
+    'rishikesh': {
+      weather: { 'January':'Cool 5–18°C. Yoga season peak. River too cold and strong for rafting.', 'February':'Cool 8–22°C. International Yoga Festival (1st week March).', 'March':'International Yoga Festival. Pleasant 12–28°C. Great for meditation.', 'April':'Warm 18–35°C. Rafting season opens. Beatles Ashram less crowded.', 'May':'Hot 22–38°C. Rafting excellent. Visit char dhams before monsoon.', 'June':'Pre-monsoon 24–37°C. Last month for safe rafting.', 'July':'Monsoon 22–30°C. Rafting CLOSED (Grade 5+ rapids, deadly). Yoga only.', 'August':'Monsoon 22–29°C. Ganga swollen and violent. Do NOT raft.', 'September':'Post-monsoon 20–30°C. Rafting reopens late September.', 'October':'Excellent 15–28°C. Rafting perfect. Diwali on the Ganga.', 'November':'Cool 10–22°C. Perfect weather. Yoga and meditation season.', 'December':'Cold 5–15°C. Mist on the river. Quiet and spiritual. Blankets needed.' },
+      days: [
+        { title:'Sacred Adventure — Aarti, Rafting & the Ganga',
+          acts:[
+            {time:'Morning',place:'Sunrise Yoga at Parmarth Niketan',desc:'5:30am yoga on the Ganga banks as mist rises off the river. The most photogenic spiritual experience in Rishikesh. ₹200 for drop-in class. The 13-floor ashram has 1,000+ rooms — book if staying.',cost:'₹200'},
+            {time:'Morning',place:'White Water Rafting, Shivpuri',desc:'16km Grade III-IV rafting from Shivpuri to Laxman Jhula. Includes the famous roller coaster and golf course rapids. 2.5 hours. Includes life jacket, helmet, guide. Best Sep–June. Check water levels.',cost:'₹1,200'},
+            {time:'Afternoon',place:'Beatles Ashram (Chaurasi Kutia)',desc:'Where John, Paul, George and Ringo composed the White Album in 1968. Now a jungle-wrapped ruin covered in psychedelic murals. Peacocks live here. Walking through the overgrown meditation caves is surreal and moving.',cost:'₹150'},
+            {time:'Afternoon',place:'Chotiwala Restaurant, Ram Jhula',desc:'The most famous dhabha in Rishikesh since 1958 — the mustachioed Chotiwala mascot greets you. Try: rajma chawal, aloo paratha, banana lassi and the famous Rishikesh thali (₹250). Queue is part of the experience.',cost:'₹300'},
+            {time:'Evening',place:'Triveni Ghat Ganga Aarti',desc:'7pm — the grandest aarti in Rishikesh. 7 priests, massive fire urns, 2,000 devotees, flower offerings floating on the river. The sound of bells and mantras echoes off the mountains. Absolute magic.',cost:'₹0'},
+            {time:'Night',place:'Laxman Jhula Evening Walk',desc:'Rishikesh\'s twin suspension bridges (84m long, 1939) swinging over the jade-green Ganga. At night, temples on both sides glow with lights. Little Buddha Café above the bridge for final Himalayan green tea.',cost:'₹100'}
+          ]
+        }
+      ]
+    }
+
+  };
+
+  // ── MATCH DESTINATION ────────────────────────────────────
+  const matchKey = Object.keys(RICH_ITINERARIES).find(k => d.includes(k)) ||
+    Object.keys(DEST_DATA).find(k => d.includes(k.toLowerCase())) || 'default';
+
+  // Get current month weather tip
+  const weatherTips = RICH_ITINERARIES[matchKey]?.weather || {};
+  const weatherTip = weatherTips[month] || `Check local weather forecasts before packing.`;
+
+  // Build itinerary
+  let out = '';
+
+  if (RICH_ITINERARIES[matchKey]) {
+    const richDays = RICH_ITINERARIES[matchKey].days;
+    for (let i = 1; i <= days; i++) {
+      const dayIdx = (i - 1) % richDays.length;
+      const day = richDays[dayIdx];
+      const dayTitle = i > richDays.length ? `${day.title} (Day ${i})` : day.title;
+      out += `DAY ${i}: ${dayTitle}\n`;
+      day.acts.forEach(a => { out += `${a.time} | ${a.place} | ${a.desc} | ${a.cost}\n`; });
+      out += '\n';
+    }
+  } else {
+    // Fallback to DEST_DATA
+    const fallbackKey = Object.keys(DEST_DATA).find(k => d.includes(k.toLowerCase())) || 'default';
+    const data = DEST_DATA[fallbackKey];
+    const itin = data.itinerary;
+    const availDays = Object.keys(itin).map(Number);
+    for (let i = 1; i <= days; i++) {
+      const dayKey = availDays[(i-1) % availDays.length];
+      const day = itin[dayKey];
+      out += `DAY ${i}: ${day.title}\n`;
+      day.acts.forEach(a => { out += `${a.time} | ${a.place} | ${a.desc} | ${a.cost}\n`; });
+      out += '\n';
+    }
+  }
+
+  const destDisplay = dest.charAt(0).toUpperCase() + dest.slice(1);
+  out += `TOTAL: ₹${budget.toLocaleString()}\nWEATHER TIP: ${weatherTip}`;
+  return out;
+}
+
+function localAI_hotels(city, budget, guests) {
+  const key = Object.keys(DEST_DATA).find(k => city.toLowerCase().includes(k.toLowerCase())) || 'default';
+  const hotels = DEST_DATA[key].hotels;
+  const bud = parseInt(budget) || 3000;
+  const sorted = [...hotels].sort((a,b) => {
+    const aPrice = parseInt(a.price.replace(/[^\d]/g,''));
+    const bPrice = parseInt(b.price.replace(/[^\d]/g,''));
+    return Math.abs(aPrice - bud) - Math.abs(bPrice - bud);
+  });
+  return sorted.map((h,i) => `${i+1}. ${h.name} ⭐ ${'★'.repeat(h.stars)}\n   📍 ${h.area}\n   💰 ${h.price}/night\n   🛎️ ${h.amenities}\n   ✅ ${h.why}\n`).join('\n');
+}
+
+function localAI_packages(dest, dur, style, interests) {
+  const key = Object.keys(DEST_DATA).find(k => dest.toLowerCase().includes(k.toLowerCase())) || 'default';
+  const packs = DEST_DATA[key].packages[style] || DEST_DATA[key].packages['Comfort'];
+  return packs.map((p,i) => {
+    return `📦 Package ${i+1}: ${p.name}\n"${p.tagline}"\n\n💰 Price: ${p.price} (${p.days})\n\n✅ Includes: ${p.includes}\n\n🌟 Highlights:\n${p.highlights.map(h=>`  • ${h}`).join('\n')}\n\n👥 Ideal for: ${p.ideal}\n${'─'.repeat(50)}\n`;
+  }).join('\n');
+}
+
+function localAI_sentiment(review, scores) {
+  const emotions = [];
+  if (scores.pos > 0.3) emotions.push('joy', 'satisfaction');
+  else if (scores.pos > 0.1) emotions.push('mild positivity', 'appreciation');
+  if (scores.neg > 0.2) emotions.push('frustration', 'disappointment');
+  else if (scores.neg > 0.05) emotions.push('mild dissatisfaction');
+  if (!emotions.length) emotions.push('neutrality', 'indifference');
+
+  const praised = [], criticised = [];
+  const posWords = ['amazing','great','excellent','wonderful','beautiful','fantastic','lovely','perfect','awesome','breathtaking','incredible','superb','clean','friendly','stunning','best','recommended'];
+  const negWords = ['bad','terrible','horrible','awful','worst','poor','dirty','rude','disappointed','boring','waste','overcrowded','expensive','overrated','noisy','unhelpful'];
+  const words = review.toLowerCase().split(/\W+/);
+  posWords.forEach(w => { if (words.includes(w)) praised.push(w); });
+  negWords.forEach(w => { if (words.includes(w)) criticised.push(w); });
+
+  const trust = Math.round(5 + (parseFloat(scores.compound) * 4));
+  const clampedTrust = Math.max(1, Math.min(10, trust));
+
+  const verdict = scores.verdict;
+  let recommendation = '';
+  if (verdict === 'Positive') recommendation = 'This destination or service comes highly recommended based on the review. Travellers with similar preferences are likely to enjoy it.';
+  else if (verdict === 'Negative') recommendation = 'Travellers should research this destination/service carefully before booking. Consider reading multiple reviews and verifying recent conditions.';
+  else recommendation = 'This is a balanced review. The experience seems average — worth visiting if it fits your specific interests, but don\'t expect to be blown away.';
+
+  return `1️⃣ Key Emotions Detected: ${emotions.join(', ')}\n\n2️⃣ Aspects Praised: ${praised.length ? praised.join(', ') : 'General positive sentiment throughout'}\n   Aspects Criticised: ${criticised.length ? criticised.join(', ') : 'No major criticism detected'}\n\n3️⃣ Recommendation: ${recommendation}\n\n4️⃣ Trust Score: ${clampedTrust}/10 — ${clampedTrust >= 7 ? 'This review reads as genuine and well-articulated.' : clampedTrust >= 5 ? 'Moderately credible — mix of objective and subjective points.' : 'Low trust score — very brief or heavily biased review.'}`;
+}
+
+// Smart local chat bot
+function localAI_chat(msg, history) {
+  const m = msg.toLowerCase();
+  const lastDest = history.reduce((acc, h) => {
+    const match = Object.keys(DEST_DATA).find(k => h.content && h.content.toLowerCase().includes(k.toLowerCase()));
+    return match || acc;
+  }, null);
+  const dest = Object.keys(DEST_DATA).find(k => m.includes(k.toLowerCase())) || lastDest;
+
+  if (m.match(/hotel|stay|accommodation|resort|hostel|lodge/)) {
+    if (dest && DEST_DATA[dest]) {
+      const h = DEST_DATA[dest].hotels;
+      return `🏨 Here are some great stays in ${dest}:\n\n${h.slice(0,3).map(h=>`• **${h.name}** (${h.price}/night) — ${h.why}`).join('\n\n')}\n\nWant more details on any of these?`;
+    }
+    return `🏨 India has amazing stays across all budgets!\n\n• **Budget (₹500–₹2,000):** Zostel hostels, OYO, local guesthouses\n• **Comfort (₹2,500–₹8,000):** Lemon Tree, Ibis, boutique havelis\n• **Luxury (₹8,000+):** Taj, ITC, Oberoi, heritage palace hotels\n\nTell me which city and I'll give specific picks!`;
+  }
+  if (m.match(/best time|when to visit|season|weather|monsoon/)) {
+    const seasons = {
+      'Goa': 'October to March — peak beach season with perfect 28°C weather. Avoid June–September monsoon.',
+      'Manali': 'October–June for clear roads & snow. July–September has rain but lush green valleys.',
+      'Kerala': 'October to February — post-monsoon greenery and pleasant weather. June–August is monsoon magic.',
+      'Jaipur': 'October to March — cool Rajasthan winters (15–25°C). Summer can hit 45°C.',
+      'Ladakh': 'June to September ONLY — roads open, clear skies, 15–25°C. Closed in winter.',
+      'Andaman': 'October to May — calm seas, great visibility. Avoid monsoon (June–September).',
+      'Rishikesh': 'September to June — avoid July–August monsoon (river too dangerous for rafting).',
+      'Udaipur': 'October to March — cool and clear for sightseeing. Post-monsoon (September) is beautiful.',
+    };
+    if (dest && seasons[dest]) return `📅 Best time to visit **${dest}**: ${seasons[dest]}`;
+    return `📅 India's best travel seasons:\n\n• **North India (Delhi, Jaipur, Agra):** October–March\n• **Goa & South India:** October–February\n• **Himachal & Uttarakhand:** March–June, Sep–November\n• **Ladakh:** June–September only\n• **Kerala:** October–February\n• **Monsoon lovers:** July–September in Kerala and Western Ghats\n\nWhere are you thinking of going?`;
+  }
+  if (m.match(/budget|cost|expensive|cheap|money|price|rupee|₹/)) {
+    if (dest && DEST_DATA[dest]) {
+      const d = DESTS.find(x=>x.name===dest);
+      return `💰 Budget guide for **${dest}**:\n\n• **Budget traveller:** ₹${d ? Math.round(d.budget*0.5).toLocaleString() : '5,000'}–₹${d ? Math.round(d.budget*0.7).toLocaleString() : '10,000'} total\n• **Comfort traveller:** ₹${d ? d.budget.toLocaleString() : '20,000'}–₹${d ? Math.round(d.budget*1.5).toLocaleString() : '30,000'} total\n• **Luxury traveller:** ₹${d ? Math.round(d.budget*2).toLocaleString() : '40,000'}–₹${d ? Math.round(d.budget*3.5).toLocaleString() : '70,000'} total\n\nThis includes stay, food, transport and activities. Want a detailed breakdown?`;
+    }
+    return `💰 India travel budget guide:\n\n• **Budget:** ₹1,500–₹3,000/day (hostels, local food, public transport)\n• **Comfort:** ₹4,000–₹8,000/day (3-star hotels, restaurants, taxis)\n• **Luxury:** ₹15,000–₹50,000+/day (5-star, private tours, fine dining)\n\nWhich destination are you budgeting for?`;
+  }
+  if (m.match(/itinerary|plan|schedule|day by day|days|trip plan/)) {
+    if (dest && DEST_DATA[dest]) {
+      const itin = DEST_DATA[dest].itinerary;
+      const day1 = itin[1];
+      return `📅 Here's a sneak peek of a ${dest} itinerary:\n\n**Day 1: ${day1.title}**\n${day1.acts.map(a=>`• ${a.time}: ${a.place} — ${a.desc.substring(0,60)}...`).join('\n')}\n\nUse the **Trips tab** in the search box and type "${dest}" to get the full day-by-day plan with maps and budget!`;
+    }
+    return `📅 I can help plan your itinerary! Try these popular options:\n\n• **3 days in Goa** — beaches, forts, nightlife\n• **5 days in Kerala** — backwaters, Munnar, Kochi\n• **4 days in Rajasthan** — Jaipur, forts, bazaars\n• **7 days in Ladakh** — monasteries, Pangong, Nubra\n\nJust use the **Trips tab** and type your destination — I'll build you a full itinerary with maps!`;
+  }
+  if (m.match(/food|eat|restaurant|cuisine|dish|local food|street food/)) {
+    const foods = {
+      'Goa': '🍤 Don\'t miss: Fish Curry Rice, Prawn Balchão, Bebinca, Feni. Try: Fisherman\'s Wharf, Souza Lobo, Martin\'s Corner.',
+      'Manali': '🍎 Must try: Trout fish, Sidu bread, Aktori pancake, local apple juice. Try: Johnson\'s Café, Drifters Inn, Café 1947.',
+      'Kerala': '🥥 Must try: Kerala Fish Curry, Appam & Stew, Karimeen Pollichathu, Puttu & Kadala. Try: Dhe Puttu, Fort House Restaurant.',
+      'Jaipur': '🌶️ Must try: Dal Baati Churma, Laal Maas, Pyaaz Kachori, Ghewar. Try: Chokhi Dhani, LMB, Niros Restaurant.',
+      'Ladakh': '🥟 Must try: Thukpa soup, Momos, Skyu, Butter Tea (chang). Try: Bon Appetit, Tibetan Kitchen, Gesmo Restaurant.',
+      'Andaman': '🦞 Must try: Grilled lobster, Fish Amritsari, Coconut prawn curry. Try: Fat Martin\'s, Annapurna, New Lighthouse.',
+      'Rishikesh': '🌿 Mostly vegetarian! Try: Rajma Chawal, Aloo Paratha, Lassi. Try: Trayambakam Yoga Café, Chotiwala, Beatles Café.',
+      'Udaipur': '🍛 Must try: Dal Baati Churma, Gatte ki Sabzi, Mawa Kachori. Try: Ambrai Ghat, 1559 AD, Jheel\'s Café.',
+    };
+    if (dest && foods[dest]) return `🍽️ Food guide for **${dest}**:\n\n${foods[dest]}`;
+    return `🍽️ India's incredible regional cuisines:\n\n• **North:** Butter Chicken, Dal Makhani, Rajma Rice, Parathas\n• **South:** Dosa, Idli, Fish Curry, Biryani, Chettinad\n• **West (Rajasthan/Gujarat):** Dal Baati, Dhokla, Thepla\n• **East (Bengal/Odisha):** Fish preparations, Rosogolla, Mishti Doi\n• **Street food:** Pani Puri, Vada Pav, Kathi Rolls, Chole Bhature\n\nWhich region are you visiting? I'll recommend specific dishes!`;
+  }
+  if (m.match(/adventure|trek|rafting|camp|bungee|paraglid|scuba|diving|climb/)) {
+    const adventures = {
+      'Goa': '🏄 Goa adventures: Scuba diving at Grande Island, parasailing at Baga, kayaking at Palolem, jet skiing at Calangute',
+      'Manali': '🏔️ Manali adventures: River rafting on Beas, trekking to Beas Kund, bungee at Dobhi, paragliding at Solang',
+      'Ladakh': '🚵 Ladakh adventures: Mountain biking, motorbike on Khardung La, river rafting Zanskar, trekking Markha Valley',
+      'Rishikesh': '🤿 Rishikesh adventures: White water rafting Grade III-IV, bungee jumping 83m, cliff jumping, flying fox zip line',
+      'Andaman': '🐬 Andaman adventures: Scuba diving, snorkelling, glass-bottom boat, sea walking, kayaking in mangroves',
+    };
+    if (dest && adventures[dest]) return `⚡ ${adventures[dest]}!\n\nShall I plan an adventure-focused itinerary for ${dest}?`;
+    return `⚡ India's top adventure destinations:\n\n🏔️ **Manali & Ladakh** — trekking, rafting, motorbikes\n🌊 **Andaman** — scuba diving, snorkelling\n🙏 **Rishikesh** — white water rafting, bungee jumping\n🪂 **Bir Billing** — paragliding capital of India\n🏕️ **Coorg** — trekking, camping, coffee trails\n🤿 **Lakshadweep** — world-class diving and snorkelling\n\nWhich adventure activity are you most excited about?`;
+  }
+  if (m.match(/hello|hi|hey|namaste|good morning|good evening/)) {
+    return `🙏 Namaste! Welcome to TRIP-Sense AI!\n\nI'm your personal Indian travel companion. I can help you with:\n\n• 📅 **Itinerary planning** for any Indian destination\n• 🏨 **Hotel recommendations** for every budget\n• 💰 **Budget breakdowns** and travel costs\n• 🍽️ **Food guides** and restaurant picks\n• ⚡ **Adventure activities** and experiences\n• 📅 **Best time to visit** each destination\n\nWhere in India are you dreaming of going? 🌍`;
+  }
+  if (m.match(/thank|thanks|awesome|great|perfect|helpful/)) {
+    return `😊 So glad I could help! Have an amazing trip! \n\nA few parting tips:\n• 📱 Download Google Maps offline for your destination\n• 💳 Carry cash — many places don't accept cards\n• 🌡️ Check the weather forecast before packing\n• 🎟️ Book trains on IRCTC early — they fill up fast!\n\nSafe travels and bon voyage! ✈️ 🇮🇳`;
+  }
+  // Generic destination info
+  if (dest && DEST_DATA[dest] && dest !== 'default') {
+    const d = DESTS.find(x=>x.name===dest);
+    return `🌟 **${dest}** is one of India's most beloved destinations!\n\n${d ? d.desc+'.' : ''}\n\n⭐ Rating: ${d?.rating || '4.5'}/5\n💰 Avg Budget: ₹${d?.budget?.toLocaleString() || '20,000'} for a trip\n🏷️ Best for: ${d?.tags?.join(', ') || 'sightseeing, culture, food'}\n\nWhat would you like to know? Hotels, itinerary, food, best time, or budget?`;
+  }
+  // Fallback
+  const responses = [
+    `🌍 That's a great travel question! India is incredibly diverse — from the Himalayan peaks of Ladakh to the tropical beaches of Andaman.\n\nCould you tell me more about what destination you're considering? I can give you much more specific advice!`,
+    `✈️ India has 28 states and 8 union territories — each with its own culture, cuisine and experiences!\n\nTry asking me about specific destinations like Goa, Manali, Kerala, Jaipur, Ladakh or Rishikesh — or use the **Trips tab** to plan a full itinerary!`,
+    `🗺️ Great question! For the most personalised answer, could you tell me:\n\n1. Which destination are you considering?\n2. How many days do you have?\n3. What's your approximate budget?\n\nWith those details I can give you specific, helpful advice!`,
+  ];
+  return responses[Math.floor(Math.random() * responses.length)];
+}
+
+// ── VADER LITE ──────────────────────────────────────────
+function vaderScore(text) {
+  const pos = ['amazing','great','excellent','wonderful','beautiful','fantastic','lovely','perfect','awesome','love','enjoyed','breathtaking','incredible','superb','brilliant','outstanding','clean','friendly','stunning','magnificent','best','fantastic','recommended','happy','pleasure'];
+  const neg = ['bad','terrible','horrible','awful','worst','poor','dirty','rude','disappoint','boring','waste','overcrowded','expensive','overrated','frustrating','mediocre','avoid','nasty','smelly','dangerous','broken','cold','noisy','unhelpful','dirty'];
+  const words = text.toLowerCase().split(/\W+/);
+  let p=0, n=0;
+  words.forEach(w=>{ if(pos.includes(w))p++; if(neg.includes(w))n++; });
+  const len = Math.max(words.length, 1);
+  const posS = Math.min(1, p/len*12);
+  const negS = Math.min(1, n/len*12);
+  const neuS = Math.max(0, 1-posS-negS);
+  const comp = posS - negS;
+  return {
+    pos: posS.toFixed(3), neg: negS.toFixed(3),
+    neu: neuS.toFixed(3), compound: comp.toFixed(4),
+    verdict: comp>=0.05 ? 'Positive' : comp<=-0.05 ? 'Negative' : 'Neutral'
+  };
+}
+
+// ── MAIN SEARCH ─────────────────────────────────────────
+async function runSearch() {
+  const nlInput = document.getElementById('s-nl').value.trim();
+  const dest    = document.getElementById('s-dest').value.trim();
+  const days    = parseInt(document.getElementById('s-days').value) || 3;
+  const budget  = parseInt(document.getElementById('s-budget').value) || 20000;
+
+  let parsed;
+  if (nlInput) {
+    parsed = parseNL(nlInput);
+    if (!parsed.destination && dest) parsed.destination = dest;
+  } else {
+    if (!dest) { showToast('Please enter a destination!'); return; }
+    parsed = { destination: dest, duration: days, budget, interests: ['sightseeing'] };
+  }
+
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true; btn.textContent = 'Planning… ✨';
+  setLoader(20);
+
+  const ranked = scoreDestinations(parsed);
+  const target = parsed.destination || ranked[0].name;
+
+  // Show & scroll
+  document.getElementById('results-panel').style.display = 'block';
+  document.getElementById('results-title').textContent = `Your ${parsed.duration}-Day Trip to ${target}`;
+  setLoader(40);
+  setTimeout(()=>smoothScroll('results-panel'), 100);
+
+  // NLP chips
+  document.getElementById('nlp-chips').innerHTML =
+    `<div class="nlp-chip"><span class="chip-label">Destination:</span> ${target}</div>` +
+    `<div class="nlp-chip"><span class="chip-label">Days:</span> ${parsed.duration}</div>` +
+    `<div class="nlp-chip"><span class="chip-label">Budget:</span> ₹${parsed.budget.toLocaleString()}</div>` +
+    parsed.interests.map(i=>`<div class="nlp-chip"><span class="chip-label">Interest:</span> ${i}</div>`).join('');
+
+  // Destination cards with real images
+  document.getElementById('results-dest-grid').innerHTML = ranked.slice(0,6).map(d=>`
+    <div class="dest-card" onclick="quickFill('${d.name}','${parsed.duration}','${d.budget}')">
+      <div class="dest-card-img" style="background:${d.bg};overflow:hidden;position:relative">
+        <span id="demoji-${d.name.replace(/\s/g,'-')}" style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:2.5rem">${d.emoji}</span>
+        <img src="${destImageUrl(d.name)}" alt="${d.name}"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s;z-index:2"
+          onload="this.style.opacity=1;var e=document.getElementById('demoji-${d.name.replace(/\s/g,'-')}');if(e)e.style.display='none';"
+          onerror="this.style.display='none'"/>
+        <div class="dest-card-overlay">
+          <div class="dest-card-name">${d.name}</div>
+          <div class="dest-card-state">${d.state}</div>
+        </div>
+      </div>
+      <div class="dest-score-badge">${d.score}%</div>
+      <div class="dest-card-body">
+        <div class="dest-card-row">
+          <div class="dest-card-rating">⭐ ${d.rating}</div>
+          <div class="dest-card-budget">₹${d.budget.toLocaleString()} ${d.budgetFit?'✅':'⚠️'}</div>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px;line-height:1.4">${d.desc}</div>
+        <div class="dest-card-tags">${d.tags.map(t=>`<span class="dest-tag">${t}</span>`).join('')}</div>
+      </div>
+    </div>`).join('');
+
+  setLoader(55);
+
+  // Budget breakdown
+  const bdg = calcBudget(parsed.budget, parsed.duration);
+  const colors = ['#ff6b4a','#00c8ff','#00e5a0','#ffc84a','#b388ff'];
+  const total2 = Object.values(bdg).reduce((a,b)=>a+b,0);
+  document.getElementById('budget-breakdown').innerHTML = `
+    <div class="budget-card">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--body)">Total Budget</div>
+      <div class="budget-total">₹${parsed.budget.toLocaleString()}</div>
+      <div style="font-size:.8rem;color:var(--muted);font-family:var(--body)">${parsed.duration} days · est. spend ₹${total2.toLocaleString()}</div>
+      <div class="per-day"><div class="per-day-num">₹${Math.round(parsed.budget/parsed.duration).toLocaleString()}</div><div class="per-day-label">Per Day</div></div>
+    </div>
+    <div class="budget-card">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:var(--body);margin-bottom:16px">Breakdown</div>
+      <div class="budget-bar-wrap">
+        ${Object.entries(bdg).map(([k,v],i)=>`
+          <div class="budget-bar-row">
+            <div class="budget-bar-label">${k}</div>
+            <div class="budget-bar-track"><div class="budget-bar-fill" style="width:${Math.round(v/parsed.budget*100)}%;background:${colors[i]}"></div></div>
+            <div class="budget-bar-val" style="color:${colors[i]}">₹${v.toLocaleString()}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  setLoader(70);
+
+  // MAP — zoom to searched city and show real attractions from OSM Nominatim
+  setTimeout(async ()=>{
+    // Find the primary destination's lat/lon
+    const topDest = ranked[0];
+    const searchedDest = DESTS.find(d => d.name.toLowerCase() === target.toLowerCase()) || topDest;
+    const cityLat = searchedDest.lat;
+    const cityLon = searchedDest.lon;
+    const zoomLevel = 12;
+
+    if (!mapInstance) {
+      mapInstance = L.map('trip-map',{zoomControl:true}).setView([cityLat, cityLon], zoomLevel);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19}).addTo(mapInstance);
+    } else {
+      mapMarkers.forEach(m=>m.remove());
+      mapMarkers = [];
+      mapInstance.setView([cityLat, cityLon], zoomLevel);
+    }
+
+    // Pin the city itself
+    const cityIcon = L.divIcon({
+      html: `<div style="background:#ff6b4a;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.4)">${searchedDest.emoji}</div>`,
+      className:'', iconSize:[36,36], iconAnchor:[18,18]
+    });
+    const cityMarker = L.marker([cityLat, cityLon], {icon: cityIcon})
+      .bindPopup(`<b style="font-family:Fraunces,serif;font-size:1rem">${searchedDest.emoji} ${searchedDest.name}</b><br/><span style="font-size:.8rem;color:#666">${searchedDest.state}</span><br/><span style="font-size:.82rem">⭐ ${searchedDest.rating} &nbsp;·&nbsp; ₹${searchedDest.budget.toLocaleString()}</span><br/><span style="font-size:.78rem;color:#888">${searchedDest.desc}</span>`)
+      .addTo(mapInstance);
+    mapMarkers.push(cityMarker);
+
+    // Fetch real attractions from Nominatim (OSM) for this city
+    try {
+      const amenityTypes = ['tourism','historic','natural','leisure'];
+      const bbox = `${cityLat-0.35},${cityLon-0.45},${cityLat+0.35},${cityLon+0.45}`;
+      const query = `[out:json][timeout:12];(node["tourism"~"attraction|museum|viewpoint|artwork|gallery|zoo|theme_park"](${bbox});node["historic"~"monument|ruins|castle|fort|archaeological_site|memorial"](${bbox});node["leisure"~"park|garden|beach_resort|marina"](${bbox}););out 20;`;
+      const overpassUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+      const resp = await fetch(overpassUrl);
+      const data = await resp.json();
+      const elements = data.elements || [];
+
+      // Filter to those with a name and deduplicate nearby ones
+      const seen = new Set();
+      let count = 0;
+      elements.forEach(el => {
+        if (!el.lat || !el.lon || !el.tags?.name) return;
+        const nameKey = el.tags.name.toLowerCase().slice(0,12);
+        if (seen.has(nameKey)) return;
+        seen.add(nameKey);
+        if (count >= 14) return;
+        count++;
+
+        const type = el.tags.tourism || el.tags.historic || el.tags.leisure || 'place';
+        const typeEmoji = {
+          attraction:'🎯', museum:'🏛️', viewpoint:'👁️', artwork:'🎨', gallery:'🖼️',
+          monument:'🗿', ruins:'🏚️', fort:'🏰', castle:'🏰', archaeological_site:'⛏️',
+          memorial:'🕊️', park:'🌳', garden:'🌸', beach_resort:'🏖️', marina:'⛵',
+          zoo:'🦁', theme_park:'🎡', natural:'🌿'
+        }[type] || '📍';
+
+        const icon = L.divIcon({
+          html: `<div style="background:#1a5eb8;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.85rem;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)">${typeEmoji}</div>`,
+          className:'', iconSize:[28,28], iconAnchor:[14,14]
+        });
+        const wikiLink = el.tags.wikipedia ? `<br/><a href="https://en.wikipedia.org/wiki/${el.tags.wikipedia.replace('en:','')}" target="_blank" style="font-size:.75rem;color:#1a5eb8">Wikipedia ↗</a>` : '';
+        const m = L.marker([el.lat, el.lon], {icon})
+          .bindPopup(`<b style="font-family:Fraunces,serif">${typeEmoji} ${el.tags.name}</b><br/><span style="font-size:.75rem;color:#666;text-transform:capitalize">${type}</span>${wikiLink}`)
+          .addTo(mapInstance);
+        mapMarkers.push(m);
+      });
+
+      // If Overpass returned nothing useful, fall back to ranked destination pins
+      if (count === 0) {
+        ranked.slice(1,6).forEach((d,i)=>{
+          const fallbackIcon = L.divIcon({
+            html:`<div style="background:#1a5eb8;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.8rem;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)">${d.emoji}</div>`,
+            className:'', iconSize:[26,26], iconAnchor:[13,13]
+          });
+          const m = L.marker([d.lat,d.lon],{icon:fallbackIcon})
+            .bindPopup(`<b style="font-family:Fraunces,serif">${d.emoji} ${d.name}</b><br/>⭐ ${d.rating} · ₹${d.budget.toLocaleString()}<br/>Match: ${d.score}%`)
+            .addTo(mapInstance);
+          mapMarkers.push(m);
+        });
+      }
+    } catch(e) {
+      // Fallback: show other ranked destinations as pins
+      ranked.slice(1,6).forEach((d)=>{
+        const m = L.circleMarker([d.lat,d.lon],{radius:8,fillColor:'#1a5eb8',color:'#fff',weight:2,fillOpacity:.9})
+          .bindPopup(`<b>${d.emoji} ${d.name}</b><br/>⭐ ${d.rating}`)
+          .addTo(mapInstance);
+        mapMarkers.push(m);
+      });
+    }
+  }, 300);
+
+  setLoader(80);
+
+  // AI Itinerary — real Claude API if key present, smart local fallback otherwise
+  document.getElementById('itin-loading').style.display='flex';
+  document.getElementById('day-tabs').style.display='none';
+  document.getElementById('day-contents').innerHTML='';
+
+  let aiResp = null;
+  if (API_KEY) {
+    const today = new Date();
+    const month = today.toLocaleString('default',{month:'long'});
+    aiResp = await callClaude(
+      `You are an expert Indian travel planner with deep local knowledge. Create a hyper-realistic, specific ${parsed.duration}-day itinerary for ${target}, India.
+
+Current month: ${month}. Budget: ₹${parsed.budget.toLocaleString()} total. Travel style/interests: ${parsed.interests.join(', ')}.
+
+IMPORTANT RULES:
+1. Use ONLY real, well-known attractions, restaurants, hotels specific to ${target}
+2. Factor in the current month (${month}) — mention weather, seasonal events, what's open/closed
+3. For each place give opening hours, entry fees, realistic travel tips
+4. Recommend the BEST local food dishes and WHERE to eat them in ${target}
+5. Suggest the smartest visiting order to minimize travel time
+6. Include practical tips (best time to visit each spot, what to avoid, local transport)
+7. Morning activities should start at the coolest/best time for that month
+
+Format EXACTLY like this for EVERY day — no deviations:
+DAY 1: [Vivid Day Title]
+Morning | [Exact Place Name, ${target}] | [Specific 2-line description with tip for ${month}] | ₹[realistic entry cost]
+Afternoon | [Exact Place Name, ${target}] | [Specific 2-line description with food/activity tip] | ₹[cost]
+Evening | [Exact Place Name, ${target}] | [Specific description — sunset/dinner spot etc] | ₹[cost]
+Night | [Specific Hotel or Restaurant, ${target}] | [Why this place, what to order/room type] | ₹[cost]
+
+Continue for all ${parsed.duration} days. Spread across different areas each day. End with:
+TOTAL: ₹[realistic total]
+WEATHER TIP: [One sentence on ${month} weather in ${target} and what to pack]`,
+      `You are TRIP-Sense, India's most knowledgeable travel AI. You have visited every corner of India and know every hidden gem, best restaurant and practical travel hack. Always use real place names, real costs (in Indian Rupees), and real local insights. Format strictly with pipe | separators as instructed.`
+    );
+  }
+  if (!aiResp) {
+    await new Promise(r=>setTimeout(r,500));
+    aiResp = localAI_itinerary(target, parsed.duration, parsed.budget, parsed.interests);
+  }
+  currentItinerary = aiResp;
+  renderItinerary(aiResp, parsed.duration, target);
+
+  setLoader(100);
+  setTimeout(()=>setLoader(0), 600);
+  btn.disabled = false; btn.textContent = 'Search ✨';
+  showToast(`✈️ Trip to ${target} planned!`);
+}
+
+function renderItinerary(text, days, dest) {
+  document.getElementById('itin-loading').style.display='none';
+  const tabsEl = document.getElementById('day-tabs');
+  const contEl = document.getElementById('day-contents');
+  tabsEl.style.display='flex'; tabsEl.innerHTML=''; contEl.innerHTML='';
+
+  const lines = text.split('\n');
+  let curDay=0, dayData={};
+
+  lines.forEach(line=>{
+    const dm = line.match(/^DAY\s*(\d+)[:\s]*(.*)/i);
+    if (dm) {
+      curDay = parseInt(dm[1]);
+      dayData[curDay] = {title: dm[2].trim()||`Day ${curDay}`, activities:[]};
+    } else if (curDay>0 && line.includes('|')) {
+      const p = line.split('|').map(x=>x.trim());
+      if (p.length>=3) dayData[curDay].activities.push({time:p[0],place:p[1],desc:p[2],cost:p[3]||''});
+    }
+  });
+
+  if (!Object.keys(dayData).length) {
+    contEl.innerHTML=`<div style="white-space:pre-line;font-family:var(--body);font-size:.85rem;color:var(--muted);line-height:1.8">${text}</div>`;
+    return;
+  }
+
+  // Extract and display weather tip if present
+  const weatherMatch = text.match(/WEATHER TIP:\s*(.+)/i);
+  if (weatherMatch) {
+    const tip = weatherMatch[1].trim();
+    contEl.innerHTML = `<div style="display:flex;align-items:flex-start;gap:10px;background:rgba(0,200,255,.07);border:1px solid rgba(0,200,255,.2);border-radius:12px;padding:12px 16px;margin-bottom:20px;font-family:var(--body);font-size:.82rem;color:var(--sky);line-height:1.5"><span style="font-size:1.1rem;flex-shrink:0">🌤️</span><span><strong>${new Date().toLocaleString('default',{month:'long'})} Weather:</strong> ${tip}</span></div>`;
+  }
+
+  Object.entries(dayData).forEach(([d,data],i)=>{
+    tabsEl.innerHTML += `<div class="dtab${i===0?' active':''}" onclick="switchDay(${d})">${data.title||'Day '+d}</div>`;
+    const acts = data.activities.map(a=>`
+      <div class="activity">
+        <div class="act-time-col"><div class="act-time">${a.time}</div></div>
+        <div class="act-dot"></div>
+        <div class="act-main">
+          <div class="act-name">${a.place}</div>
+          <div class="act-desc">${a.desc}</div>
+          ${a.cost?`<div class="act-cost">${a.cost}</div>`:''}
+          <div class="act-type-badge">${a.time.toLowerCase()}</div>
+        </div>
+      </div>`).join('');
+    contEl.innerHTML += `<div class="day-content${i===0?' active':''}" id="day-${d}">${acts||'<p style="color:var(--muted);font-size:.85rem;padding:10px">No activities for this day.</p>'}</div>`;
+  });
+}
+
+function renderFallbackItinerary(days, dest, interests) {
+  document.getElementById('itin-loading').style.display='none';
+  const tabsEl = document.getElementById('day-tabs');
+  const contEl = document.getElementById('day-contents');
+  tabsEl.style.display='flex'; tabsEl.innerHTML=''; contEl.innerHTML='';
+  const templates=[
+    [{time:'Morning',place:`${dest} City Tour`,desc:'Explore main attractions and landmarks',cost:'₹500'},
+     {time:'Afternoon',place:'Local Food Street',desc:'Try authentic local cuisine and street food',cost:'₹400'},
+     {time:'Evening',place:'Sunset Viewpoint',desc:'Catch the golden hour at the best viewpoint',cost:'₹0'},
+     {time:'Night',place:'Hotel Check-in',desc:'Rest at your accommodation',cost:'₹1500'}],
+    [{time:'Morning',place:'Nature Walk / Trek',desc:'Guided nature walk or short trek in the area',cost:'₹300'},
+     {time:'Afternoon',place:'Heritage Site Visit',desc:'Explore historical and cultural sites',cost:'₹200'},
+     {time:'Evening',place:'Local Market',desc:'Shop for souvenirs and local crafts',cost:'₹600'},
+     {time:'Night',place:'Rooftop Dinner',desc:'Dinner with a view at a local restaurant',cost:'₹800'}],
+  ];
+  for(let d=1;d<=days;d++){
+    const tmpl=templates[(d-1)%templates.length];
+    tabsEl.innerHTML+=`<div class="dtab${d===1?' active':''}" onclick="switchDay(${d})">Day ${d}</div>`;
+    contEl.innerHTML+=`<div class="day-content${d===1?' active':''}" id="day-${d}">
+      ${tmpl.map(a=>`<div class="activity"><div class="act-time-col"><div class="act-time">${a.time}</div></div><div class="act-dot"></div><div class="act-main"><div class="act-name">${a.place}</div><div class="act-desc">${a.desc}</div><div class="act-cost">${a.cost}</div></div></div>`).join('')}
+    </div>`;
+  }
+}
+
+function switchDay(d) {
+  document.querySelectorAll('.dtab').forEach((t,i)=>t.classList.toggle('active',i===d-1));
+  document.querySelectorAll('.day-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('day-'+d)?.classList.add('active');
+}
+
+function closeResults() {
+  document.getElementById('results-panel').style.display='none';
+  smoothScroll('plan');
+}
+
+function downloadItinerary() {
+  if (!currentItinerary) {
+    showToast('⚠️ Plan a trip first to download the itinerary!');
+    return;
+  }
+  const title = document.getElementById('results-title').textContent;
+  const blob = new Blob([`TRIP-Sense — ${title}\n${'='.repeat(50)}\n\n${currentItinerary}`],{type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `TRIP-Sense-Itinerary.txt`;
+  a.click();
+  showToast('Itinerary downloaded!');
+}
+
+// ── HOTELS ──────────────────────────────────────────────
+async function searchHotels() {
+  const city   = document.getElementById('h-city').value.trim();
+  const budget = document.getElementById('h-budget').value || '3000';
+  const guests = document.getElementById('h-guests').value || '2';
+  if (!city) { showToast('Please enter a city!'); return; }
+
+  document.getElementById('results-panel').style.display='block';
+  document.getElementById('results-title').textContent=`Hotels in ${city}`;
+  document.getElementById('nlp-chips').innerHTML=`<div class="nlp-chip">🏨 Hotels in ${city}</div><div class="nlp-chip">👥 ${guests} guests</div><div class="nlp-chip">💰 ₹${parseInt(budget).toLocaleString()}/night</div>`;
+  document.getElementById('results-dest-grid').innerHTML='';
+  document.getElementById('budget-breakdown').innerHTML='';
+  document.getElementById('itin-loading').style.display='flex';
+  document.getElementById('day-tabs').style.display='none';
+  document.getElementById('day-contents').innerHTML='';
+  smoothScroll('results-panel');
+
+  let resp = null;
+  if (API_KEY) {
+    resp = await callClaude(
+      `List the 5 best hotels in ${city}, India for ${guests} guest(s) with a budget of ₹${budget} per night. For each hotel: 1) Hotel name and star rating, 2) Price range per night, 3) Top 3 amenities, 4) Location/neighbourhood, 5) Why it's great value. Format as a clean numbered list.`,
+      'You are a hotel expert for India. Be specific with real hotel names, accurate prices, and honest reviews.'
+    );
+  }
+  if (!resp) { await new Promise(r=>setTimeout(r,400)); resp = localAI_hotels(city, budget, guests); }
+  document.getElementById('itin-loading').style.display='none';
+  document.getElementById('day-contents').innerHTML=`<div style="white-space:pre-line;font-family:var(--body);font-size:.9rem;line-height:1.9;color:var(--text);padding:8px 0">${resp}</div>`;
+}
+
+// ── PACKAGES ────────────────────────────────────────────
+async function searchPackages() {
+  const dest      = document.getElementById('p-dest').value.trim();
+  const dur       = document.getElementById('p-dur').value;
+  const style     = document.getElementById('p-style').value;
+  const interests = document.getElementById('p-interests').value.trim();
+  if (!dest) { showToast('Please enter a destination!'); return; }
+
+  document.getElementById('results-panel').style.display='block';
+  document.getElementById('results-title').textContent=`${style} Packages — ${dest}`;
+  document.getElementById('nlp-chips').innerHTML=`<div class="nlp-chip">📦 ${dur}</div><div class="nlp-chip">✨ ${style}</div><div class="nlp-chip">📍 ${dest}</div>${interests?`<div class="nlp-chip">🎯 ${interests}</div>`:''}`;
+  document.getElementById('results-dest-grid').innerHTML='';
+  document.getElementById('budget-breakdown').innerHTML='';
+  document.getElementById('itin-loading').style.display='flex';
+  document.getElementById('day-tabs').style.display='none';
+  document.getElementById('day-contents').innerHTML='';
+  smoothScroll('results-panel');
+
+  let resp = null;
+  if (API_KEY) {
+    resp = await callClaude(
+      `Create 3 ${style.toLowerCase()} travel package options for ${dest}, India for ${dur}.${interests?' Special interests: '+interests+'.':''} For each package: Package name & tagline, Total price per person, What's included (hotel type, transport, meals, activities), Top 3 highlights, Who it's ideal for. Make them distinctly different.`,
+      'You are an expert Indian travel package designer. Be creative with package names and specific about inclusions and prices.'
+    );
+  }
+  if (!resp) { await new Promise(r=>setTimeout(r,400)); resp = localAI_packages(dest, dur, style, interests); }
+  document.getElementById('itin-loading').style.display='none';
+  document.getElementById('day-contents').innerHTML=`<div style="white-space:pre-line;font-family:var(--body);font-size:.9rem;line-height:1.9;color:var(--text);padding:8px 0">${resp}</div>`;
+}
+
+// ── CHAT ─────────────────────────────────────────────────
+function toggleChat() {
+  document.getElementById('chat-box').classList.toggle('open');
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chat-inp');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value='';
+  appendChatMsg('user', msg);
+  chatHistory.push({role:'user', content:msg});
+
+  const dots = document.getElementById('typing-dots');
+  dots.classList.add('show');
+  scrollChat();
+
+  let reply = null;
+  if (API_KEY) {
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:800,
+          system:'You are TRIP-Sense AI, an expert Indian travel planner. Be warm, specific, helpful and enthusiastic. Use • bullet points for lists. Keep responses concise but packed with value.',
+          messages: chatHistory
+        })
+      });
+      const data = await r.json();
+      if (!data.error) reply = data.content?.map(b=>b.text||'').join('') || null;
+    } catch(e) { console.error(e); }
+  }
+  if (!reply) {
+    await new Promise(r=>setTimeout(r, 500 + Math.random()*300));
+    reply = localAI_chat(msg, chatHistory);
+  }
+  chatHistory.push({role:'assistant', content:reply});
+  dots.classList.remove('show');
+  appendChatMsg('bot', reply);
+}
+
+function appendChatMsg(role, text) {
+  const msgs = document.getElementById('chat-msgs');
+  const dots = document.getElementById('typing-dots');
+  const div  = document.createElement('div');
+  div.className = `cmsg ${role}`;
+  div.innerHTML = `<div class="cmsg-bubble">${text.replace(/\n/g,'<br/>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/•/g,'•')}</div>`;
+  msgs.insertBefore(div, dots);
+  scrollChat();
+}
+
+function scrollChat() {
+  const m = document.getElementById('chat-msgs');
+  m.scrollTop = m.scrollHeight;
+}
+</script>
+</body>
+</html>

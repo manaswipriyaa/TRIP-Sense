@@ -1,0 +1,18 @@
+pip install streamlit
+pip install pandas
+pip install numpy
+pip install scikit-learn
+pip install surprise
+pip install spacy
+pip install transformers
+pip install torch
+pip install folium
+pip install plotly
+pip install requests
+pip install python-dotenv
+pip install shap
+pip install doWhy
+python -m spacy download en_core_web_sm
+
+openweather api
+a33e34339d132ff2d76e0e59de3203f5
