@@ -83,7 +83,7 @@ The AI itinerary generator and chatbot will now use Claude `claude-sonnet-4-2025
 
 ```
 TRIP-Sense/
-└── TS-UI.html        # Entire application — UI, logic, data, styles
+└── TRIP-Sense-UI.html        # Entire application - UI, logic, data, styles
 └── README.md
 ```
 
