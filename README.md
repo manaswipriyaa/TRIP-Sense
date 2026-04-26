@@ -1,43 +1,43 @@
-# TRIP-Sense — AI Travel Planner 
+# TRIP-Sense - AI Travel Planner 
 
 > *Travel Smarter. Explore Deeper.*
 
-TRIP-Sense is a single-page AI-powered travel planning web app for Indian destinations. Type a natural language query — it handles everything: destination recommendations, day-by-day itineraries, budget breakdowns, hotel suggestions, and live route maps.
+TRIP-Sense is a single-page AI-powered travel planning web app for Indian destinations. Type a natural language query - it handles everything: destination recommendations, day-by-day itineraries, budget breakdowns, hotel suggestions, and live route maps.
 
 ---
 
 ## Live Demo
 
-Open `TRIP-Sense-UI.html` directly in any browser — no server, no build step, no dependencies to install.
+Open `TRIP-Sense-UI.html` directly in any browser - no server, no build step, no dependencies to install.
 
 ---
 
 ## Features
 
 ### Natural Language Search
-Type like you'd tell a friend — *"3 days in Goa under ₹20,000 for beaches"*. A custom NLP parser extracts destination, duration, budget and interests automatically.
+Type like you'd tell a friend - *"3 days in Goa under ₹20,000 for beaches"*. A custom NLP parser extracts destination, duration, budget and interests automatically.
 
 ### Destination Recommendations
-A rule-based scoring engine matches destinations from a 16-city database against your budget, duration and interests — returning ranked cards with match percentages.
+A rule-based scoring engine matches destinations from a 16-city database against your budget, duration and interests - returning ranked cards with match percentages.
 
 ### Day-by-Day Itineraries
-City-specific itinerary engine with real landmark names, opening hours, entry costs and local food recommendations. Weather-aware — adjusts tips based on the current month. Covers:
+City-specific itinerary engine with real landmark names, opening hours, entry costs and local food recommendations. Weather-aware - adjusts tips based on the current month. Covers:
 - Hyderabad · Goa · Jaipur · Mumbai · Varanasi
 - Ladakh · Kerala · Manali · Rishikesh *(+ 7 more via fallback)*
 
 ### Live Interactive Maps
-- **OpenStreetMap tiles** via Leaflet.js — full realistic map rendering
+- **OpenStreetMap tiles** via Leaflet.js - full realistic map rendering
 - **Overpass API** — fetches real attractions (forts, museums, parks, monuments) near the searched city and pins them on the map
-- Custom emoji markers per attraction type (🏰 forts, 🏛️ museums, 🌳 parks, etc.)
+- Custom emoji markers per attraction type (forts, museums, parks, etc.)
 
 ### Smart Budget Planner
-Auto-splits your total budget across accommodation, food, transport and activities — visualised as an animated breakdown bar chart.
+Auto-splits your total budget across accommodation, food, transport and activities - visualised as an animated breakdown bar chart.
 
 ### Hotel & Package Recommendations
 City-specific hotel picks across budget, comfort and luxury tiers, with area, price/night, amenities and a "why this hotel" note. Package builder with three travel styles (Budget / Comfort / Luxury).
 
 ### AI Travel Chatbot
-Floating chat assistant powered by the Claude API (Anthropic). Falls back to a rule-based local engine when no API key is provided — handles questions about hotels, budgets, best time to visit, itineraries and general travel advice.
+Floating chat assistant powered by the Claude API (Anthropic). Falls back to a rule-based local engine when no API key is provided - handles questions about hotels, budgets, best time to visit, itineraries and general travel advice.
 
 ### Trending Destinations Strip
 Horizontally scrollable destination cards with real city photography (Unsplash). Click any card to auto-fill the search.
