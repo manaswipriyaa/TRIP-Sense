@@ -56,7 +56,7 @@ Horizontally scrollable destination cards with real city photography (Unsplash).
 | [Unsplash](https://unsplash.com/) | Destination photography |
 | [Google Fonts](https://fonts.google.com/) | Fraunces (display) + Outfit (body) |
 
-> **No frameworks. No build tools. No npm.** Pure vanilla JS — open the HTML file and it works.
+> **No frameworks. No build tools. No npm.** Pure vanilla JS - open the HTML file and it works.
 
 ---
 
