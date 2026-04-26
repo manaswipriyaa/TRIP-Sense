@@ -137,9 +137,3 @@ User Input  ->  NLP Parser  ->  Extracted: { dest, days, budget, interests }
 
 **Manaswi Priya**
 - GitHub: [@manaswipriyaa](https://github.com/manaswipriyaa)
-
----
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
